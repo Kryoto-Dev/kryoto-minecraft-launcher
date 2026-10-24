@@ -1,4 +1,4 @@
-import type { Accounts, AppInfo, ContentItem, GameState, Instance, LogLine, Settings, Task, VersionList } from '@/lib/api'
+import type { AppInfo, ContentItem, GameState, Instance, LogLine, Profiles, Settings, Task, VersionList } from '@/lib/api'
 
 /**
  * `pnpm dev` in a plain browser: the native commands answered with sample
@@ -25,7 +25,7 @@ export const previewBus = {
 const now = () => Math.floor(Date.now() / 1000)
 const day = 86400
 
-const info: AppInfo = { version: __APP_VERSION__, dataDir: 'C:\\Users\\you\\AppData\\Roaming\\to.kryo.minecraft', microsoftAvailable: true, platform: 'windows-x86_64', totalMemoryMb: 16384 }
+const info: AppInfo = { version: __APP_VERSION__, dataDir: 'C:\\Users\\you\\AppData\\Roaming\\to.kryo.minecraft', platform: 'windows-x86_64', totalMemoryMb: 16384 }
 
 let settings: Settings = {
   javaPath: null,
@@ -39,6 +39,7 @@ let settings: Settings = {
   palette: 'oled',
   radius: 'pill',
   font: 'teletext',
+  chick: true,
   firstRunDone: new URLSearchParams(location.search).get('first') !== '1',
 }
 
@@ -50,8 +51,8 @@ let instances: Instance[] = new URLSearchParams(location.search).get('empty') ==
   { id: 'beta', name: 'Beta 1.7.3', gameVersion: 'b1.7.3', loader: { kind: 'vanilla', version: null }, launchVersion: 'b1.7.3', versionType: 'old_beta', installed: true, created: now() - 9 * day, lastPlayed: now() - 9 * day, playSeconds: 4_000, icon: 'sand', overrides },
 ]
 
-let accounts: Accounts = { accounts: [{ id: 'b50ad385829d3141a2167e7d7539ba7f', kind: 'offline', name: 'Steve', xuid: null, skinUrl: null, added: now() }], active: 'b50ad385829d3141a2167e7d7539ba7f' }
-if (!settings.firstRunDone) accounts = { accounts: [], active: null }
+let profiles: Profiles = { profiles: [{ id: 'b50ad385829d3141a2167e7d7539ba7f', name: 'Steve', added: now() }], active: 'b50ad385829d3141a2167e7d7539ba7f' }
+if (!settings.firstRunDone) profiles = { profiles: [], active: null }
 
 const versions: VersionList = (() => {
   const v: VersionList['versions'] = []
@@ -175,7 +176,7 @@ export async function previewCall<T>(command: string, args: Record<string, unkno
       return r(instances.find((i) => i.id === id))
     case 'launch': {
       const inst = instances.find((i) => i.id === id)
-      if (!accounts.active) throw 'Add an account first: sign in with Microsoft, or make an offline profile.'
+      if (!profiles.active) throw 'Make a profile first: pick the name you play under.'
       if (inst && !inst.installed) {
         fakeTask(`Starting ${inst.name}`, id, 300_000_000, () => {
           instances = instances.map((i) => (i.id === id ? { ...i, installed: true } : i))
@@ -203,26 +204,20 @@ export async function previewCall<T>(command: string, args: Record<string, unkno
       tasks = tasks.filter((t) => t.state === 'running')
       emitTasks()
       return r(null)
-    case 'accounts_list':
-      return r(accounts)
-    case 'account_offline_add': {
+    case 'profiles_list':
+      return r(profiles)
+    case 'profile_add': {
       const name = args.name as string
       if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) throw 'A name is 3 to 16 letters, numbers or _.'
-      const a = { id: `off-${name}`, kind: 'offline' as const, name, xuid: null, skinUrl: null, added: now() }
-      accounts = { accounts: [...accounts.accounts, a], active: a.id }
-      return r(a)
+      const p = { id: `p-${name}`, name, added: now() }
+      profiles = { profiles: [...profiles.profiles, p], active: p.id }
+      return r(p)
     }
-    case 'account_set_active':
-      accounts = { ...accounts, active: id }
+    case 'profile_set_active':
+      profiles = { ...profiles, active: id }
       return r(null)
-    case 'account_remove':
-      accounts = { accounts: accounts.accounts.filter((a) => a.id !== id), active: accounts.active === id ? null : accounts.active }
-      return r(null)
-    case 'account_microsoft_start':
-      return r({ userCode: 'KRYO-2026', verificationUri: 'https://www.microsoft.com/link', expiresIn: 900 })
-    case 'account_microsoft_finish':
-      return new Promise<T>(() => {})
-    case 'account_microsoft_cancel':
+    case 'profile_remove':
+      profiles = { profiles: profiles.profiles.filter((p) => p.id !== id), active: profiles.active === id ? null : profiles.active }
       return r(null)
     case 'content_list':
       return r(content[`${id}:${args.kind as string}`] ?? [])

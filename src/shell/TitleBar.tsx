@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * The window's top strip, as Kryoto Desktop draws it: the mark, the app's
- * name, a drag area, whatever the shell puts on the right (the account), and
+ * name, a drag area, whatever the shell puts on the right (the profile), and
  * the window buttons. Double-click the empty part to maximize.
  */
 export function TitleBar({ right }: { right?: ReactNode }) {

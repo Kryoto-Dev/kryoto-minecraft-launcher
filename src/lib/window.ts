@@ -47,3 +47,52 @@ export function openExternal(url: string) {
 }
 
 export const isWindowsHost = () => typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
+
+/**
+ * Resizing from the window's edges on Linux, where a frameless GTK window has
+ * no resize border of its own (Windows draws one). A press within a few
+ * pixels of an edge hands the resize to the window manager.
+ */
+const EDGE = 5
+type Direction = 'North' | 'South' | 'East' | 'West' | 'NorthEast' | 'NorthWest' | 'SouthEast' | 'SouthWest'
+
+function edgeAt(x: number, y: number): Direction | null {
+  const w = window.innerWidth
+  const h = window.innerHeight
+  const n = y < EDGE, s = y > h - EDGE, west = x < EDGE, e = x > w - EDGE
+  if (n && west) return 'NorthWest'
+  if (n && e) return 'NorthEast'
+  if (s && west) return 'SouthWest'
+  if (s && e) return 'SouthEast'
+  if (n) return 'North'
+  if (s) return 'South'
+  if (west) return 'West'
+  if (e) return 'East'
+  return null
+}
+
+const CURSORS: Record<Direction, string> = {
+  North: 'ns-resize', South: 'ns-resize', East: 'ew-resize', West: 'ew-resize',
+  NorthEast: 'nesw-resize', SouthWest: 'nesw-resize', NorthWest: 'nwse-resize', SouthEast: 'nwse-resize',
+}
+
+export function installEdgeResize() {
+  if (!isTauri() || !/Linux/i.test(navigator.userAgent)) return
+  const root = document.documentElement
+  window.addEventListener('mousemove', (e) => {
+    const edge = document.documentElement.dataset.frame === 'square' ? null : edgeAt(e.clientX, e.clientY)
+    root.style.cursor = edge ? CURSORS[edge] : ''
+  })
+  window.addEventListener(
+    'mousedown',
+    (e) => {
+      if (e.button !== 0 || root.dataset.frame === 'square') return
+      const edge = edgeAt(e.clientX, e.clientY)
+      if (!edge) return
+      e.preventDefault()
+      e.stopPropagation()
+      void getCurrentWindow().startResizeDragging(edge)
+    },
+    true,
+  )
+}

@@ -20,8 +20,6 @@ base64 = "0.22"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 regex = "1"
 url = "2"
-# Microsoft sign-in's refresh tokens: Windows Credential Manager, Linux Secret Service.
-keyring = { version = "3", features = ["windows-native", "sync-secret-service", "crypto-rust"] }
 sysinfo = { version = "0.33", default-features = false, features = ["system"] }
 getrandom = "0.2"
 # Local times for the game log's lines.

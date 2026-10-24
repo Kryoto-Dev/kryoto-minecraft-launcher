@@ -25,7 +25,8 @@
     "lucide-react": "^1.34.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "three": "0.170.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -33,6 +34,7 @@
     "@types/node": "^26.6.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/three": "0.170.0",
     "playwright": "1.62.1",
     "sharp": "0.34.5",
     "tailwindcss": "^4.3.3",

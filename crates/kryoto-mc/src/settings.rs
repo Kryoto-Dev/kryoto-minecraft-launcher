@@ -22,6 +22,8 @@ pub struct Settings {
     pub palette: String,
     pub radius: String,
     pub font: String,
+    /// The chick that walks along the bottom of the window.
+    pub chick: bool,
     pub first_run_done: bool,
 }
 
@@ -39,6 +41,7 @@ impl Default for Settings {
             palette: "oled".into(),
             radius: "pill".into(),
             font: "teletext".into(),
+            chick: true,
             first_run_done: false,
         }
     }

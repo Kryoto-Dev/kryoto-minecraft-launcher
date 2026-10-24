@@ -1,9 +1,11 @@
 //! Kryoto Minecraft Launcher: the app around the `kryoto-mc` engine. The
 //! window, the commands the UI calls, events back to it, file dialogs.
 
+#[cfg(target_os = "linux")]
+mod linux;
+
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, State};
@@ -12,12 +14,10 @@ use kryoto_mc::content::{self, Kind};
 use kryoto_mc::core::Core;
 use kryoto_mc::instances::{self, Instance, LaunchOverrides, Loader};
 use kryoto_mc::paths::Paths;
-use kryoto_mc::{auth, java, launch, loaders, logging, meta, modrinth, settings, tasks};
+use kryoto_mc::{auth, java, launch, loaders, logging, meta, mobs, modrinth, settings, tasks};
 
 struct App {
     core: Core,
-    /// The Microsoft sign-in in progress: its code, and a way to stop waiting.
-    sign_in: Mutex<Option<(auth::DeviceCode, Arc<AtomicBool>)>>,
 }
 
 type Res<T> = Result<T, String>;
@@ -29,7 +29,6 @@ type Res<T> = Result<T, String>;
 struct AppInfo {
     version: String,
     data_dir: String,
-    microsoft_available: bool,
     platform: String,
     total_memory_mb: u64,
 }
@@ -39,7 +38,6 @@ fn app_info(app: State<App>) -> AppInfo {
     AppInfo {
         version: env!("CARGO_PKG_VERSION").into(),
         data_dir: app.core.paths.root.display().to_string(),
-        microsoft_available: auth::client_id().is_some(),
         platform: format!("{}-{}", meta::os_name(), meta::os_arch()),
         total_memory_mb: settings::total_memory_mb(),
     }
@@ -313,54 +311,26 @@ fn tasks_clear(app: State<App>) {
     app.core.tasks.clear();
 }
 
-/* ── Accounts ───────────────────────────────────────────── */
+/* ── Profiles ───────────────────────────────────────────── */
 
 #[tauri::command]
-fn accounts_list(app: State<App>) -> auth::Accounts {
+fn profiles_list(app: State<App>) -> auth::Profiles {
     auth::load(&app.core.paths)
 }
 
 #[tauri::command]
-fn account_offline_add(app: State<App>, name: String) -> Res<auth::Account> {
-    auth::add_offline(&app.core.paths, &name)
+fn profile_add(app: State<App>, name: String) -> Res<auth::Profile> {
+    auth::add(&app.core.paths, &name)
 }
 
 #[tauri::command]
-fn account_set_active(app: State<App>, id: String) -> Res<()> {
+fn profile_set_active(app: State<App>, id: String) -> Res<()> {
     auth::set_active(&app.core.paths, &id)
 }
 
 #[tauri::command]
-fn account_remove(app: State<App>, id: String) -> Res<()> {
+fn profile_remove(app: State<App>, id: String) -> Res<()> {
     auth::remove(&app.core.paths, &id)
-}
-
-#[tauri::command]
-async fn account_microsoft_start(app: State<'_, App>) -> Res<auth::DeviceCode> {
-    let code = auth::start_device_code().await?;
-    let stop = Arc::new(AtomicBool::new(false));
-    if let Some((_, old)) = app.sign_in.lock().unwrap().replace((code.clone(), stop)) {
-        old.store(true, Ordering::Relaxed);
-    }
-    Ok(code)
-}
-
-#[tauri::command]
-async fn account_microsoft_finish(app: State<'_, App>) -> Res<auth::Account> {
-    let (code, stop) = app.sign_in.lock().unwrap().clone().ok_or("Start the sign-in first.")?;
-    let result = auth::finish_device_code(&app.core.paths, &code, || stop.load(Ordering::Relaxed)).await;
-    let mut current = app.sign_in.lock().unwrap();
-    if current.as_ref().is_some_and(|(c, _)| c.user_code == code.user_code) {
-        *current = None;
-    }
-    result
-}
-
-#[tauri::command]
-fn account_microsoft_cancel(app: State<App>) {
-    if let Some((_, stop)) = app.sign_in.lock().unwrap().take() {
-        stop.store(true, Ordering::Relaxed);
-    }
 }
 
 /* ── Content ────────────────────────────────────────────── */
@@ -432,6 +402,14 @@ async fn modrinth_install(app: State<'_, App>, id: String, kind: String, project
     result
 }
 
+/// A mob texture from the player's installed game, as a data: URL.
+#[tauri::command(async)]
+fn mob_texture(app: State<App>, name: String) -> Res<String> {
+    use base64::Engine;
+    let png = mobs::texture(&app.core.paths, &name)?;
+    Ok(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)))
+}
+
 /* ── Java ───────────────────────────────────────────────── */
 
 #[tauri::command]
@@ -461,6 +439,8 @@ fn data_root(app: &tauri::AppHandle) -> PathBuf {
 }
 
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    linux::apply();
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -498,7 +478,7 @@ pub fn run() {
                     let _ = instances_handle.emit("instances-changed", ());
                 }),
             };
-            app.manage(App { core, sign_in: Mutex::new(None) });
+            app.manage(App { core });
             // The page shows the window once it has drawn (no white flash); if
             // it never gets that far, the window still appears.
             let window_handle = handle.clone();
@@ -536,13 +516,10 @@ pub fn run() {
             tasks_list,
             task_cancel,
             tasks_clear,
-            accounts_list,
-            account_offline_add,
-            account_set_active,
-            account_remove,
-            account_microsoft_start,
-            account_microsoft_finish,
-            account_microsoft_cancel,
+            profiles_list,
+            profile_add,
+            profile_set_active,
+            profile_remove,
             content_list,
             content_set_enabled,
             content_delete,
@@ -551,6 +528,7 @@ pub fn run() {
             modrinth_search,
             modrinth_install,
             java_probe,
+            mob_texture,
             java_pick,
         ])
         .run(tauri::generate_context!())

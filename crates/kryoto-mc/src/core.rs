@@ -128,8 +128,7 @@ impl Core {
 
     async fn launch_in(&self, id: &str, extras: Extras, task: &TaskHandle) -> Result<u32, String> {
         let (instance, prepared) = self.install_in(id, Verify::Size, task).await?;
-        task.stage("Signing in");
-        let account = auth::for_launch(&self.paths).await?;
+        let profile = auth::active(&self.paths)?;
         let global = settings::load(&self.paths);
         let o = &instance.overrides;
         let memory_mb = o.memory_mb.unwrap_or(global.memory_mb).max(512);
@@ -168,11 +167,11 @@ impl Core {
             &prepared,
             &game_dir,
             &natives_dir,
-            &account,
+            &profile,
             &launch::Settings { memory_mb, jvm_args: &jvm_args, resolution: Some((width, height)), fullscreen },
             &extras,
         );
-        note(format!("Account: {} ({})", account.name, if account.online { "Microsoft" } else { "offline" }));
+        note(format!("Profile: {}", profile.name));
         note(format!("Java: {}", command.java.display()));
         note(command.shown.clone());
 

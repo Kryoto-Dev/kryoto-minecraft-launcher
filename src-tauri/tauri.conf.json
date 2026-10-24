@@ -28,13 +28,13 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://cdn.modrinth.com https://*.modrinth.com https://crafatar.com https://mc-heads.net; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://cdn.modrinth.com https://*.modrinth.com; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "targets": ["nsis", "appimage", "deb"],
+    "targets": ["nsis", "appimage", "deb", "rpm"],
     "windows": {
       "nsis": {
         "installMode": "currentUser",
@@ -56,7 +56,7 @@
     "category": "Game",
     "copyright": "Kryoto",
     "shortDescription": "Minecraft Java Edition, every version, from Kryoto",
-    "longDescription": "Kryoto Minecraft Launcher: install and play any Minecraft Java Edition version, with Fabric, Quilt, Forge and NeoForge, mods and resource packs from Modrinth, and Microsoft or offline profiles. Game files come from Mojang; nothing proprietary ships in the installer."
+    "longDescription": "Kryoto Minecraft Launcher: install and play any Minecraft Java Edition version, with Fabric, Quilt, Forge and NeoForge, mods and resource packs from Modrinth, and profiles to play under. Game files come from Mojang; nothing proprietary ships in the installer."
   },
   "plugins": {
     "updater": {

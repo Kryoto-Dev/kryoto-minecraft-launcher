@@ -12,7 +12,10 @@ The first version.
 - Fabric, Quilt, Forge and NeoForge.
 - Mods, resource packs and shader packs from Modrinth, with the mods they require; drop files on
   the window to add them; turn mods on and off.
-- Microsoft sign-in (device code, no password in the launcher) and offline profiles.
+- Profiles: pick a name and play singleplayer, LAN and offline-mode servers. No account needed.
 - Join a server straight from the launcher, Kryo.to Anarchy first.
 - The game's log in the launcher, and a plain-words reason when it stops badly.
+- A baby chicken walks along the bottom of the window, in 3D, looking the way it does in the
+  game you installed. Click it.
+- Windows and Linux (AppImage, .deb, .rpm).
 - Updates itself.

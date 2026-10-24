@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { on } from '@/lib/bridge'
-import { api, type Accounts, type GameState, type Instance, type LogLine, type Task } from '@/lib/api'
+import { api, type GameState, type Instance, type LogLine, type Profiles, type Task } from '@/lib/api'
 import { logError } from '@/lib/log'
 
 /**
@@ -28,7 +28,7 @@ function store<T>(initial: T) {
 
 const instances = store<Instance[] | null>(null)
 const tasks = store<Task[]>([])
-const accounts = store<Accounts>({ accounts: [], active: null })
+const profiles = store<Profiles>({ profiles: [], active: null })
 const games = store<Record<string, GameState>>({})
 const logs = new Map<string, ReturnType<typeof store<LogLine[]>>>()
 
@@ -52,11 +52,11 @@ export const live = {
       if (instances.get() === null) instances.set([])
     }
   },
-  async refreshAccounts() {
+  async refreshProfiles() {
     try {
-      accounts.set(await api.accounts())
+      profiles.set(await api.profiles())
     } catch (e) {
-      logError('accounts', e)
+      logError('profiles', e)
     }
   },
   async loadLog(id: string) {
@@ -76,7 +76,7 @@ export function startLive() {
   if (started) return
   started = true
   void live.refreshInstances()
-  void live.refreshAccounts()
+  void live.refreshProfiles()
   void api.tasks().then(tasks.set).catch(() => {})
   void api
     .gameStates()
@@ -106,7 +106,7 @@ export function startLive() {
 
 export const useInstances = () => useSyncExternalStore(instances.subscribe, instances.get)
 export const useTasks = () => useSyncExternalStore(tasks.subscribe, tasks.get)
-export const useAccounts = () => useSyncExternalStore(accounts.subscribe, accounts.get)
+export const useProfiles = () => useSyncExternalStore(profiles.subscribe, profiles.get)
 export const useGames = () => useSyncExternalStore(games.subscribe, games.get)
 export function useLog(id: string) {
   const s = logStore(id)
@@ -125,6 +125,6 @@ export function taskFraction(t: Task): number | null {
   return null
 }
 
-export function activeAccount(a: Accounts) {
-  return a.accounts.find((x) => x.id === a.active) ?? null
+export function activeProfile(p: Profiles) {
+  return p.profiles.find((x) => x.id === p.active) ?? null
 }

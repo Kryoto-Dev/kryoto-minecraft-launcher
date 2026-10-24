@@ -30,11 +30,35 @@ The details behind the README's quick start.
 official launcher's (`versions/`, `libraries/`, `assets/`), plus `runtimes/` for Java and
 `instances/<id>/minecraft/` for each instance's game folder. See `crates/kryoto-mc/src/paths.rs`.
 
-## Accounts
+## Profiles
 
-Offline profiles are a name; their UUID is the one an offline-mode server computes
-(`OfflinePlayer:<name>`). Microsoft sign-in needs an Azure app ID that Mojang has approved:
-[microsoft-sign-in.md](microsoft-sign-in.md).
+A profile is a name; its UUID is the one an offline-mode server computes
+(`OfflinePlayer:<name>`), so worlds and server inventories follow the name. There is no
+account sign-in: profiles play singleplayer, LAN and offline-mode servers (`online-mode=false`,
+as play.kryo.to runs). The game starts with access token `0` and user type `legacy`.
+
+## The chick
+
+`src/chick/` draws a baby chicken walking along the bottom of the window, in three.js, loaded
+only when it is shown. Its shape is the game's baby chicken model (`BabyChickenModel` in 26.x:
+its boxes, pivots and UV offsets are in `scene.ts`); its texture is read at runtime from the
+newest installed client jar (`mobs.rs`, a fixed list of allowed textures), so the launcher
+ships none of Mojang's files and the chick appears once a version that has baby chicks is
+installed. Settings, Interface turns it off; reduced motion keeps it standing still.
+
+## Linux
+
+`src-tauri/src/linux.rs` sets WebKitGTK's renderer before the window starts (Kryoto Desktop's
+findings: DMA-BUF off, XWayland under Wayland), and `installEdgeResize` in `src/lib/window.ts`
+gives the frameless window resize edges. Checking the engine's Linux code from Windows, without
+a Linux C compiler (nothing is linked, so MinGW's gcc can stand in for ring's C):
+
+```bash
+CC_x86_64_unknown_linux_gnu=gcc AR_x86_64_unknown_linux_gnu=ar \
+  cargo clippy --target x86_64-unknown-linux-gnu --manifest-path crates/kryoto-mc/Cargo.toml --all-targets -- -D warnings
+```
+
+The app itself (GTK) only builds on Linux; CI and the release workflow do that on Ubuntu 22.04.
 
 ## Building
 

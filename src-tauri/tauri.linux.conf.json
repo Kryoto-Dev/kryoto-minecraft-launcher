@@ -1,0 +1,20 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Kryoto Minecraft Launcher",
+        "width": 1180,
+        "height": 740,
+        "minWidth": 960,
+        "minHeight": 620,
+        "center": true,
+        "theme": "Dark",
+        "decorations": false,
+        "transparent": true,
+        "shadow": true,
+        "visible": false
+      }
+    ]
+  }
+}

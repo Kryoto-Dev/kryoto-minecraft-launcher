@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowUpRight, FolderOpen, LogIn, Trash2, UserRound } from 'lucide-react'
+import { ArrowUpRight, FolderOpen, Trash2, UserRound } from 'lucide-react'
 import { Button, Caption, Check, Dropdown, Section, Segmented, inputCls } from '@/ui'
 import { KryoMark } from '@/ui/ascii/KryoMark'
 import { JavaPicker, MemorySlider, NumberField } from '@/ui/Controls'
@@ -7,22 +7,22 @@ import { toastError } from '@/ui/Toasts'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/app-context'
 import { FONTS, PALETTES, RADII } from '@/lib/look'
-import { live, useAccounts } from '@/lib/store'
+import { live, useProfiles } from '@/lib/store'
 import { openExternal } from '@/lib/window'
 import { cn } from '@/lib/utils'
-import { Avatar, type AccountDialog } from '@/accounts/Accounts'
+import { Avatar } from '@/profiles/Profiles'
 import { UpdateCheck } from '@/shell/UpdatePrompt'
 
-type Pane = 'game' | 'accounts' | 'look' | 'about'
+type Pane = 'game' | 'profiles' | 'look' | 'about'
 
 const PANES: [Pane, string][] = [
   ['game', 'Game'],
-  ['accounts', 'Accounts'],
+  ['profiles', 'Profiles'],
   ['look', 'Interface'],
   ['about', 'About'],
 ]
 
-export function SettingsPage({ onAccount }: { onAccount: (d: AccountDialog) => void }) {
+export function SettingsPage({ onAddProfile }: { onAddProfile: () => void }) {
   const [pane, setPane] = useState<Pane>('game')
   return (
     <div className="grid h-full min-h-0 grid-cols-[200px_1fr]">
@@ -41,7 +41,7 @@ export function SettingsPage({ onAccount }: { onAccount: (d: AccountDialog) => v
       </nav>
       <div className="min-h-0 overflow-y-auto">
         <div className="grid max-w-3xl gap-8 px-6 py-6">
-          {pane === 'game' ? <GamePane /> : pane === 'accounts' ? <AccountsPane onAccount={onAccount} /> : pane === 'look' ? <LookPane /> : <AboutPane />}
+          {pane === 'game' ? <GamePane /> : pane === 'profiles' ? <ProfilesPane onAddProfile={onAddProfile} /> : pane === 'look' ? <LookPane /> : <AboutPane />}
         </div>
       </div>
     </div>
@@ -97,53 +97,39 @@ function GamePane() {
   )
 }
 
-function AccountsPane({ onAccount }: { onAccount: (d: AccountDialog) => void }) {
-  const accounts = useAccounts()
+function ProfilesPane({ onAddProfile }: { onAddProfile: () => void }) {
+  const profiles = useProfiles()
   return (
     <>
-      <Section title="Accounts" hint="The account the game starts with is the one ticked. Switch any time from the title bar.">
-        {accounts.accounts.length === 0 ? <p className="text-xs text-muted-foreground">No accounts yet.</p> : null}
+      <Section title="Profiles" hint="The name the game starts with is the one marked. Switch any time from the title bar.">
+        {profiles.profiles.length === 0 ? <p className="text-xs text-muted-foreground">No profiles yet.</p> : null}
         <ul className="grid gap-1.5">
-          {accounts.accounts.map((a) => (
-            <li key={a.id} className="kryo-radius flex items-center gap-3 border border-border px-3 py-2.5">
-              <Avatar account={a} className="size-8" />
-              <div className="grid grow">
-                <span className="text-xs font-bold">{a.name}</span>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{a.kind === 'microsoft' ? 'Microsoft · owns Minecraft' : 'Offline profile'}</span>
-              </div>
-              {accounts.active === a.id ? (
+          {profiles.profiles.map((p) => (
+            <li key={p.id} className="kryo-radius flex items-center gap-3 border border-border px-3 py-2.5">
+              <Avatar profile={p} className="size-8" />
+              <span className="grow text-xs font-bold">{p.name}</span>
+              {profiles.active === p.id ? (
                 <Caption className="text-foreground">Playing as</Caption>
               ) : (
-                <Button size="sm" onClick={() => void api.setActiveAccount(a.id).then(live.refreshAccounts).catch(toastError)}>
+                <Button size="sm" onClick={() => void api.setActiveProfile(p.id).then(live.refreshProfiles).catch(toastError)}>
                   Use
                 </Button>
               )}
-              <Button size="sm" variant="ghost" aria-label={`Remove ${a.name}`} onClick={() => void api.removeAccount(a.id).then(live.refreshAccounts).catch(toastError)}>
+              <Button size="sm" variant="ghost" aria-label={`Remove ${p.name}`} onClick={() => void api.removeProfile(p.id).then(live.refreshProfiles).catch(toastError)}>
                 <Trash2 className="size-3" />
               </Button>
             </li>
           ))}
         </ul>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="primary" onClick={() => onAccount('microsoft')}>
-            <LogIn className="size-3.5" /> Sign in with Microsoft
-          </Button>
-          <Button onClick={() => onAccount('offline')}>
-            <UserRound className="size-3.5" /> Add an offline profile
-          </Button>
-        </div>
+        <Button variant="primary" className="justify-self-start" onClick={onAddProfile}>
+          <UserRound className="size-3.5" /> New profile
+        </Button>
       </Section>
-      <Section title="What each kind can do">
-        <dl className="grid gap-2 text-[11px] leading-relaxed text-muted-foreground">
-          <div>
-            <dt className="font-bold text-foreground/90">Microsoft account</dt>
-            <dd>Any server, Realms, your skin. Must own Minecraft: Java Edition. You sign in on Microsoft's page; the launcher keeps a sign-in token in Windows' credential store, never your password.</dd>
-          </div>
-          <div>
-            <dt className="font-bold text-foreground/90">Offline profile</dt>
-            <dd>Singleplayer and offline-mode servers, under any name. Servers that check accounts turn it away.</dd>
-          </div>
-        </dl>
+      <Section title="What a profile can do">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Singleplayer, LAN, and servers that run in offline mode, like play.kryo.to, under any name. Your worlds and a server's inventory follow the name. Servers that check
+          Microsoft accounts, Realms and skins aren't available.
+        </p>
       </Section>
     </>
   )
@@ -167,6 +153,9 @@ function LookPane() {
       </Section>
       <Section title="Type">
         <Segmented value={settings.font} onChange={(v) => void saveSettings({ font: v })} options={FONTS} />
+      </Section>
+      <Section title="The chick" hint="A baby chicken walks along the bottom of the window once a version with baby chicks is installed. Its look comes from that game. Click it.">
+        <Check checked={settings.chick} onChange={(on) => void saveSettings({ chick: on })} label="Show the chick" />
       </Section>
     </>
   )

@@ -3,7 +3,6 @@ import { Server } from 'lucide-react'
 import { Button, Caption, Modal, inputCls } from '@/ui'
 import { toastError } from '@/ui/Toasts'
 import { api, type Instance } from '@/lib/api'
-import { activeAccount, useAccounts } from '@/lib/store'
 
 /** Kryoto's own server, first in the list. */
 const KRYOTO_SERVER = { name: 'Kryo.to Anarchy', address: 'play.kryo.to' }
@@ -29,8 +28,6 @@ function remember(address: string) {
 /** Start the game straight into a server. */
 export function JoinDialog({ instance, onClose }: { instance: Instance; onClose: () => void }) {
   const [address, setAddress] = useState('')
-  const accounts = useAccounts()
-  const offline = activeAccount(accounts)?.kind === 'offline'
   const recent = recentServers().filter((a) => a !== KRYOTO_SERVER.address)
   const join = async (to: string) => {
     const target = to.trim()
@@ -83,9 +80,8 @@ export function JoinDialog({ instance, onClose }: { instance: Instance; onClose:
           <input autoFocus value={address} onChange={(e) => setAddress(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void join(address)} placeholder="mc.example.com or 1.2.3.4:25565" className={inputCls} />
         </label>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          {offline
-            ? 'You are playing with an offline profile: servers that check accounts will turn you away. Offline-mode servers let you in.'
-            : 'The game starts and connects by itself. Versions before 1.20 need the port when the server is not on 25565.'}
+          The game starts and connects by itself. Offline-mode servers let you in; servers that check Microsoft accounts turn you away. Versions before 1.20 need the
+          port when the server isn't on 25565.
         </p>
       </div>
     </Modal>

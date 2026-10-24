@@ -29,7 +29,7 @@ pub struct Extras {
 pub struct CommandLine {
     pub java: PathBuf,
     pub args: Vec<String>,
-    /// For the log: the same, with the access token blanked out.
+    /// For the log: the same, as one line.
     pub shown: String,
 }
 
@@ -41,7 +41,7 @@ pub struct Settings<'a> {
 }
 
 /// Build the java command line for a prepared version.
-pub fn command_line(paths: &Paths, prepared: &Prepared, game_dir: &Path, natives_dir: &Path, account: &auth::Launch, settings: &Settings, extras: &Extras) -> CommandLine {
+pub fn command_line(paths: &Paths, prepared: &Prepared, game_dir: &Path, natives_dir: &Path, profile: &auth::Profile, settings: &Settings, extras: &Extras) -> CommandLine {
     let json = &prepared.resolved.json;
     let sep = if cfg!(windows) { ";" } else { ":" };
     let mut classpath: Vec<String> = prepared.classpath.iter().map(|p| p.display().to_string()).collect();
@@ -68,18 +68,19 @@ pub fn command_line(paths: &Paths, prepared: &Prepared, game_dir: &Path, natives
 
     let (width, height) = settings.resolution.unwrap_or((854, 480));
     let vars: HashMap<&str, String> = HashMap::from([
-        ("auth_player_name", account.name.clone()),
+        ("auth_player_name", profile.name.clone()),
         ("version_name", json.id.clone()),
         ("game_directory", game_dir.display().to_string()),
         ("assets_root", paths.assets().display().to_string()),
         ("game_assets", prepared.game_assets.display().to_string()),
         ("assets_index_name", prepared.assets_index.clone()),
-        ("auth_uuid", account.uuid.clone()),
-        ("auth_access_token", account.access_token.clone()),
-        ("auth_session", if account.online { format!("token:{}:{}", account.access_token, account.uuid) } else { "-".into() }),
-        ("auth_xuid", account.xuid.clone()),
-        ("clientid", auth::client_id().unwrap_or("").to_string()),
-        ("user_type", account.user_type.to_string()),
+        ("auth_uuid", profile.id.clone()),
+        // No account, so no token: "0" is what offline launchers have always passed.
+        ("auth_access_token", "0".into()),
+        ("auth_session", "-".into()),
+        ("auth_xuid", "0".into()),
+        ("clientid", String::new()),
+        ("user_type", "legacy".into()),
         ("user_properties", "{}".into()),
         ("version_type", json.kind.clone().unwrap_or_else(|| "release".into())),
         ("resolution_width", width.to_string()),
@@ -153,9 +154,8 @@ pub fn command_line(paths: &Paths, prepared: &Prepared, game_dir: &Path, natives
     }
     args.extend(game);
 
-    let token = &account.access_token;
     let shown = std::iter::once(prepared.java.display().to_string())
-        .chain(args.iter().map(|a| if token.len() > 4 && a.contains(token.as_str()) { a.replace(token.as_str(), "<hidden>") } else { a.clone() }))
+        .chain(args.iter().cloned())
         .map(|a| if a.contains(' ') { format!("\"{a}\"") } else { a })
         .collect::<Vec<_>>()
         .join(" ");

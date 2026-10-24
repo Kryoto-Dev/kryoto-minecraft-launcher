@@ -42,7 +42,7 @@ async fn install_and_play() {
     let games = std::env::var("KRYOTO_TEST_GAMES").unwrap_or_else(|_| "latest vanilla".into());
     let paths = Paths::new(root.into());
     let core = Core::headless(paths.clone());
-    auth::add_offline(&paths, "KryotoTest").expect("offline profile");
+    auth::add(&paths, "KryotoTest").expect("profile");
     let manifest = meta::manifest(&paths, true).await.expect("version list");
 
     let mut failures = Vec::new();

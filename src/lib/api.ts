@@ -8,7 +8,6 @@ import { call } from '@/lib/bridge'
 export type AppInfo = {
   version: string
   dataDir: string
-  microsoftAvailable: boolean
   platform: string
   totalMemoryMb: number
 }
@@ -25,6 +24,7 @@ export type Settings = {
   palette: string
   radius: string
   font: string
+  chick: boolean
   firstRunDone: boolean
 }
 
@@ -92,16 +92,8 @@ export type Task = {
   retry: { command: string; args: Record<string, unknown> } | null
 }
 
-export type Account = {
-  id: string
-  kind: 'microsoft' | 'offline'
-  name: string
-  xuid: string | null
-  skinUrl: string | null
-  added: number
-}
-export type Accounts = { accounts: Account[]; active: string | null }
-export type DeviceCode = { userCode: string; verificationUri: string; expiresIn: number }
+export type Profile = { id: string; name: string; added: number }
+export type Profiles = { profiles: Profile[]; active: string | null }
 
 export type LogLine = { line: string; stream: 'out' | 'warn' | 'err' | 'launcher' }
 export type Exit = { code: number | null; seconds: number; hint: string | null; crashReport: string | null; stoppedByPlayer: boolean }
@@ -168,13 +160,10 @@ export const api = {
   cancelTask: (id: string) => call<void>('task_cancel', { id }),
   clearTasks: () => call<void>('tasks_clear'),
 
-  accounts: () => call<Accounts>('accounts_list'),
-  addOffline: (name: string) => call<Account>('account_offline_add', { name }),
-  setActiveAccount: (id: string) => call<void>('account_set_active', { id }),
-  removeAccount: (id: string) => call<void>('account_remove', { id }),
-  microsoftStart: () => call<DeviceCode>('account_microsoft_start'),
-  microsoftFinish: () => call<Account>('account_microsoft_finish'),
-  microsoftCancel: () => call<void>('account_microsoft_cancel'),
+  profiles: () => call<Profiles>('profiles_list'),
+  addProfile: (name: string) => call<Profile>('profile_add', { name }),
+  setActiveProfile: (id: string) => call<void>('profile_set_active', { id }),
+  removeProfile: (id: string) => call<void>('profile_remove', { id }),
 
   content: (id: string, kind: ContentKind) => call<ContentItem[]>('content_list', { id, kind }),
   setContentEnabled: (id: string, kind: ContentKind, file: string, enabled: boolean) => call<string>('content_set_enabled', { id, kind, file, enabled }),
@@ -187,6 +176,7 @@ export const api = {
   modrinthInstall: (id: string, kind: ContentKind, project: string, title: string) => call<string[]>('modrinth_install', { id, kind, project, title }),
 
   probeJava: (path: string) => call<JavaInfo>('java_probe', { path }),
+  mobTexture: (name: string) => call<string>('mob_texture', { name }),
   pickJava: () => call<string | null>('java_pick'),
 }
 

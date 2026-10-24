@@ -8,8 +8,9 @@ import { errorText, on } from '@/lib/bridge'
 import { applyLook } from '@/lib/look'
 import { startLive, useInstances, useTasks } from '@/lib/store'
 import { minimizeWindow, showWindow } from '@/lib/window'
-import { AccountMenu, MicrosoftDialog, OfflineDialog, type AccountDialog } from '@/accounts/Accounts'
+import { ProfileDialog, ProfileMenu } from '@/profiles/Profiles'
 import { Welcome } from '@/boot/Welcome'
+import { Chick } from '@/chick/Chick'
 import { DownloadsPage } from '@/downloads/DownloadsPage'
 import { Home } from '@/library/Home'
 import { InstancePage } from '@/library/InstancePage'
@@ -81,14 +82,14 @@ export default function App() {
 function Shell() {
   const [tab, setTab] = useState<Tab>('play')
   const [selected, setSelected] = useState<string | null>(null)
-  const [accountDialog, setAccountDialog] = useState<AccountDialog>(null)
+  const [addingProfile, setAddingProfile] = useState(false)
   const [creating, setCreating] = useState<{ initial?: string } | null>(null)
   const [joining, setJoining] = useState<Instance | null>(null)
   const [versions, setVersions] = useState<VersionList | null>(null)
   const [versionsError, setVersionsError] = useState<string | null>(null)
   const instances = useInstances()
   const tasks = useTasks()
-  const { info, settings, saveSettings } = useApp()
+  const { settings, saveSettings } = useApp()
 
   const loadVersions = useCallback((refresh: boolean) => {
     setVersionsError(null)
@@ -132,13 +133,11 @@ function Shell() {
   const firstRun = !settings.firstRunDone && instances.length === 0
   return (
     <div className="flex h-full flex-col bg-background text-foreground">
-      <TitleBar right={<AccountMenu onOpen={setAccountDialog} />} />
+      <TitleBar right={<ProfileMenu onAdd={() => setAddingProfile(true)} />} />
       {firstRun ? (
         <main className="min-h-0 grow">
           <Welcome
-            microsoft={info.microsoftAvailable}
             versions={versions}
-            onAccount={setAccountDialog}
             onInstall={(v) => newInstance(v)}
             onBrowse={() => {
               void saveSettings({ firstRunDone: true })
@@ -159,7 +158,7 @@ function Shell() {
               </Button>
             }
           />
-          <main className="flex min-h-0 grow">
+          <main className="relative flex min-h-0 grow">
             {tab === 'play' ? (
               <>
                 <Sidebar instances={instances} selected={current?.id ?? null} onSelect={setSelected} onNew={() => newInstance()} />
@@ -181,16 +180,16 @@ function Shell() {
               </div>
             ) : (
               <div className="kryo-fade min-w-0 grow">
-                <SettingsPage onAccount={setAccountDialog} />
+                <SettingsPage onAddProfile={() => setAddingProfile(true)} />
               </div>
             )}
+            {settings.chick ? <Chick /> : null}
           </main>
           <BottomBar instances={instances} onDownloads={() => setTab('downloads')} onOpen={openInstance} />
         </>
       )}
 
-      {accountDialog === 'microsoft' ? <MicrosoftDialog available={info.microsoftAvailable} onClose={() => setAccountDialog(null)} /> : null}
-      {accountDialog === 'offline' ? <OfflineDialog onClose={() => setAccountDialog(null)} /> : null}
+      {addingProfile ? <ProfileDialog onClose={() => setAddingProfile(false)} /> : null}
       {creating && versions ? (
         <NewInstanceDialog
           versions={versions}

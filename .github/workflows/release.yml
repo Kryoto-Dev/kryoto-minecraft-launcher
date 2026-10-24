@@ -6,18 +6,13 @@ name: Release
 # crates/kryoto-mc/Cargo.toml and src-tauri/tauri.conf.json, add the
 # CHANGELOG.md entry, push to main.
 #
-# The installer lands on a GitHub release with the in-app updater's files: a
-# minisign signature beside it and latest.json, which every installed copy
-# reads from releases/latest/download/latest.json. Signing uses the
+# The installers land on a draft release: Windows (NSIS setup), Linux
+# (AppImage, .deb, .rpm). Beside each is the in-app updater's minisign
+# signature, and once every platform is up, latest.json, which installed
+# copies read from releases/latest/download/latest.json. Signing uses the
 # TAURI_SIGNING_PRIVATE_KEY secret (and _PASSWORD), the launcher's own key,
-# whose public half is plugins.updater.pubkey in tauri.conf.json.
-#
-# KRYOTO_MSA_CLIENT_ID (a repository variable) is the Azure app ID Microsoft
-# sign-in uses (docs/microsoft-sign-in.md). Without it the release still
-# builds; its Microsoft button says sign-in isn't set up.
-#
-# Windows only for now. The engine and the app already build on Linux (CI);
-# adding the AppImage here is a matrix entry and a latest.json key.
+# whose public half is plugins.updater.pubkey in tauri.conf.json. Only then is
+# the release published.
 on:
   push:
     branches: [main]
@@ -66,10 +61,36 @@ jobs:
             echo "needed=true" >> "$GITHUB_OUTPUT"
           fi
 
-  build:
+  create-release:
     needs: check
     if: needs.check.outputs.needed == 'true'
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ needs.check.outputs.version }}
+        run: |
+          # A draft left by a run that failed part-way would sit beside this one.
+          gh release delete "v$V" --yes 2>/dev/null || true
+          notes=$(awk -v v="## $V" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md)
+          gh release create "v$V" --draft --target "$GITHUB_SHA" --title "Kryoto Minecraft Launcher $V" --notes "$notes"
+
+  build:
+    needs: [check, create-release]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          # 22.04: the oldest glibc the AppImage and .deb should run on, and
+          # the Tauri packages below keep these names there.
+          - os: ubuntu-22.04
+            platform: linux
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -84,57 +105,130 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev libssl-dev rpm
       - name: Require the updater signing key
-        shell: pwsh
+        shell: bash
         env:
           KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          if (-not $env:KEY) { Write-Output "::error::TAURI_SIGNING_PRIVATE_KEY is not set: without it there is no latest.json and no installed copy ever updates."; exit 1 }
+          if [ -z "$KEY" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set: without it there is no latest.json and no installed copy ever updates."
+            exit 1
+          fi
       - run: pnpm install --frozen-lockfile
-      - name: Check
+      # PowerShell on Windows: in a bash step Git's MSYS `link` shadows MSVC's.
+      - name: Check (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           pnpm build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test --locked --manifest-path crates/kryoto-mc/Cargo.toml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Build the installer
+      - name: Check (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          pnpm build
+          cargo test --locked --manifest-path crates/kryoto-mc/Cargo.toml
+      - name: Build the installers (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          KRYOTO_MSA_CLIENT_ID: ${{ vars.KRYOTO_MSA_CLIENT_ID }}
         # `tauri build` only warns when the key doesn't match the public key,
         # and every installed copy would then refuse the update. Fail instead.
         run: |
           pnpm app:build *>&1 | Tee-Object -FilePath build.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (Select-String -Path build.log -Pattern "does not match the public key" -Quiet) { Write-Output "::error::The signing key doesn't match plugins.updater.pubkey."; exit 1 }
-      - name: Publish
-        shell: pwsh
+      - name: Build the installers (Linux)
+        if: runner.os == 'Linux'
+        env:
+          # The AppImage tooling is itself an AppImage; without FUSE on the
+          # runner it has to unpack itself instead of mounting.
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -o pipefail
+          pnpm app:build 2>&1 | tee build.log
+          if grep -q "does not match the public key" build.log; then
+            echo "::error::The signing key doesn't match plugins.updater.pubkey."
+            exit 1
+          fi
+      - name: Attach them to the release
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          V: ${{ needs.check.outputs.version }}
-          REPO: ${{ github.repository }}
         run: |
-          $bundle = "src-tauri/target/release/bundle/nsis"
-          New-Item -ItemType Directory -Force out | Out-Null
-          $setup = Get-ChildItem "$bundle/*_${env:V}_x64-setup.exe" | Select-Object -First 1
-          $name = "Kryoto-Minecraft-Launcher_${env:V}_x64-setup.exe"
-          Copy-Item $setup.FullName "out/$name"
-          Copy-Item "$($setup.FullName).sig" "out/$name.sig"
-          $hash = (Get-FileHash "out/$name" -Algorithm SHA256).Hash.ToLower()
-          "$hash  $name" | Out-File -Encoding ascii "out/$name.sha256"
-          $manifest = @{
-            version = $env:V
-            notes = "See CHANGELOG.md"
-            pub_date = (Get-Date).ToUniversalTime().ToString("o")
-            platforms = @{
-              "windows-x86_64-nsis" = @{ signature = (Get-Content "out/$name.sig" -Raw).Trim(); url = "https://github.com/$env:REPO/releases/download/v$env:V/$name" }
-              "windows-x86_64" = @{ signature = (Get-Content "out/$name.sig" -Raw).Trim(); url = "https://github.com/$env:REPO/releases/download/v$env:V/$name" }
+          v="${{ needs.check.outputs.version }}"
+          bundle=src-tauri/target/release/bundle
+          name="Kryoto-Minecraft-Launcher_${v}"
+          mkdir -p out
+          # Plain names (GitHub turns spaces into dots); each signature goes up
+          # under its installer's new name plus .sig.
+          copy() { cp "$1" "out/$2"; [ -f "$1.sig" ] && cp "$1.sig" "out/$2.sig"; true; }
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            copy "$(ls "$bundle"/nsis/*_"${v}"_x64-setup.exe | head -1)" "${name}_x64-setup.exe"
+          else
+            copy "$(ls "$bundle"/appimage/*_"${v}"_amd64.AppImage | head -1)" "${name}_amd64.AppImage"
+            copy "$(ls "$bundle"/deb/*_"${v}"_amd64.deb | head -1)" "${name}_amd64.deb"
+            copy "$(ls "$bundle"/rpm/*-"${v}"-1.x86_64.rpm | head -1)" "${name}_x86_64.rpm"
+          fi
+          (cd out && for f in *; do case "$f" in *.sig) ;; *) sha256sum "$f" > "$f.sha256" ;; esac; done)
+          ls -la out
+          gh release upload "v$v" out/* --clobber
+
+  # latest.json, written from the signatures on the release, so it can never
+  # name a file that isn't there.
+  manifest:
+    needs: [check, create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write latest.json
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          V: ${{ needs.check.outputs.version }}
+        run: |
+          mkdir -p sigs && cd sigs
+          gh release download "v$V" --repo "$REPO" --pattern '*.sig'
+          node -e '
+            const fs = require("fs");
+            const v = process.env.V, base = `https://github.com/${process.env.REPO}/releases/download/v${v}/`;
+            const entry = (file) => fs.existsSync(`${file}.sig`) ? { signature: fs.readFileSync(`${file}.sig`, "utf8").trim(), url: base + file } : null;
+            const name = `Kryoto-Minecraft-Launcher_${v}`;
+            const win = entry(`${name}_x64-setup.exe`);
+            const appimage = entry(`${name}_amd64.AppImage`);
+            const deb = entry(`${name}_amd64.deb`);
+            const rpm = entry(`${name}_x86_64.rpm`);
+            if (!win || !appimage) {
+              console.error("::error::A Windows or AppImage signature is missing; not writing a latest.json that would strand one platform.");
+              process.exit(1);
             }
-          }
-          $manifest | ConvertTo-Json -Depth 5 | Out-File -Encoding utf8NoBOM out/latest.json
-          $notes = (Get-Content CHANGELOG.md -Raw) -split "(?m)^## " | Where-Object { $_ -like "$env:V*" } | Select-Object -First 1
-          gh release create "v$env:V" out/* --repo $env:REPO --title "Kryoto Minecraft Launcher $env:V" --notes "## $notes"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            // The updater looks for {os}-{arch}-{installer} first; the plain
+            // windows key is for copies that ask without the installer type.
+            const platforms = { "windows-x86_64-nsis": win, "windows-x86_64": win, "linux-x86_64-appimage": appimage };
+            if (deb) platforms["linux-x86_64-deb"] = deb;
+            if (rpm) platforms["linux-x86_64-rpm"] = rpm;
+            fs.writeFileSync("latest.json", JSON.stringify({ version: v, notes: "See CHANGELOG.md", pub_date: new Date().toISOString(), platforms }, null, 2));
+          '
+          cat latest.json
+          gh release upload "v$V" latest.json --repo "$REPO" --clobber
+
+  publish:
+    needs: [check, create-release, build, manifest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: gh release edit "v${{ needs.check.outputs.version }}" --repo "$REPO" --draft=false --latest
