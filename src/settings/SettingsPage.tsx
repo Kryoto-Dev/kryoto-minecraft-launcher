@@ -154,8 +154,31 @@ function LookPane() {
       <Section title="Type">
         <Segmented value={settings.font} onChange={(v) => void saveSettings({ font: v })} options={FONTS} />
       </Section>
-      <Section title="The chick" hint="A baby chicken walks along the bottom of the window once a version with baby chicks is installed. Its look comes from that game. Click it.">
-        <Check checked={settings.chick} onChange={(on) => void saveSettings({ chick: on })} label="Show the chick" />
+      <Section
+        title="Baby mobs"
+        hint="Baby animals walk along the bottom of the window once a version with baby mobs (26.1 or newer) is installed. Their shapes and looks come from that game, a different mix every start. Click one."
+      >
+        <Check checked={settings.mobs} onChange={(on) => void saveSettings({ mobs: on })} label="Show baby mobs" />
+        {settings.mobs ? (
+          <>
+            <div className="flex items-center gap-3">
+              <Caption>At most</Caption>
+              <Dropdown
+                className="w-40"
+                size="sm"
+                label="How many baby mobs at most"
+                value={String(settings.mobCount)}
+                onChange={(v) => void saveSettings({ mobCount: Number(v) })}
+                options={['1', '2', '3', '5', '8', '12'].map((v) => ({ value: v, label: v === '1' ? '1 mob' : `${v} mobs` }))}
+              />
+            </div>
+            <Check
+              checked={settings.friendlyOnly}
+              onChange={(on) => void saveSettings({ friendlyOnly: on })}
+              label="No mean monsters (baby zombies, drowned, piglins, hoglins)"
+            />
+          </>
+        ) : null}
       </Section>
     </>
   )

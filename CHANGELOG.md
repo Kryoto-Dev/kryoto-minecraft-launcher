@@ -12,10 +12,12 @@ The first version.
 - Fabric, Quilt, Forge and NeoForge.
 - Mods, resource packs and shader packs from Modrinth, with the mods they require; drop files on
   the window to add them; turn mods on and off.
-- Profiles: pick a name and play singleplayer, LAN and offline-mode servers. No account needed.
+- Profiles: pick a name and play singleplayer, LAN and offline-mode servers. No account needed;
+  the first Play asks for the name.
 - Join a server straight from the launcher, Kryo.to Anarchy first.
 - The game's log in the launcher, and a plain-words reason when it stops badly.
-- A baby chicken walks along the bottom of the window, in 3D, looking the way it does in the
-  game you installed. Click it.
+- Baby mobs walk along the bottom of the window in 3D: chicks, piglets, calves, puppies,
+  kittens, foals and more, read from the game you installed, a different mix every start.
+  Choose how many, and whether baby zombies and other mean ones may come. Click one.
 - Windows and Linux (AppImage, .deb, .rpm).
 - Updates itself.

@@ -24,7 +24,9 @@ export type Settings = {
   palette: string
   radius: string
   font: string
-  chick: boolean
+  mobs: boolean
+  mobCount: number
+  friendlyOnly: boolean
   firstRunDone: boolean
 }
 
@@ -128,6 +130,11 @@ export type ModrinthHit = {
 }
 export type ModrinthResult = { hits: ModrinthHit[]; offset: number; limit: number; total_hits: number }
 
+export type MobCube = { from: [number, number, number]; size: [number, number, number]; uv: [number, number]; inflate: [number, number, number]; mirror: boolean }
+export type MobPart = { name: string; pivot: [number, number, number]; rotation: [number, number, number]; scale: number; cubes: MobCube[]; children: MobPart[] }
+export type MobInfo = { id: string; name: string; mean: boolean; gait: 'walk' | 'hop'; variants: string[] }
+export type Mob = { id: string; name: string; mean: boolean; gait: 'walk' | 'hop'; model: { textureWidth: number; textureHeight: number; root: MobPart }; texture: string }
+
 export type JavaInfo = { path: string; version: string; major: number; arch: string; vendor: string }
 
 export const api = {
@@ -176,7 +183,8 @@ export const api = {
   modrinthInstall: (id: string, kind: ContentKind, project: string, title: string) => call<string[]>('modrinth_install', { id, kind, project, title }),
 
   probeJava: (path: string) => call<JavaInfo>('java_probe', { path }),
-  mobTexture: (name: string) => call<string>('mob_texture', { name }),
+  mobsAvailable: () => call<MobInfo[]>('mobs_available'),
+  mobsLoad: (wanted: [string, string][]) => call<Mob[]>('mobs_load', { wanted }),
   pickJava: () => call<string | null>('java_pick'),
 }
 

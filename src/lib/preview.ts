@@ -39,7 +39,9 @@ let settings: Settings = {
   palette: 'oled',
   radius: 'pill',
   font: 'teletext',
-  chick: true,
+  mobs: true,
+  mobCount: 3,
+  friendlyOnly: true,
   firstRunDone: new URLSearchParams(location.search).get('first') !== '1',
 }
 

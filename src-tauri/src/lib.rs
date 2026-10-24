@@ -402,12 +402,16 @@ async fn modrinth_install(app: State<'_, App>, id: String, kind: String, project
     result
 }
 
-/// A mob texture from the player's installed game, as a data: URL.
+/// The baby mobs the installed game has.
 #[tauri::command(async)]
-fn mob_texture(app: State<App>, name: String) -> Res<String> {
-    use base64::Engine;
-    let png = mobs::texture(&app.core.paths, &name)?;
-    Ok(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)))
+fn mobs_available(app: State<App>) -> Res<Vec<mobs::MobInfo>> {
+    mobs::available(&app.core.paths)
+}
+
+/// Mobs to show: each a (mob, look) pair, read from the installed game.
+#[tauri::command(async)]
+fn mobs_load(app: State<App>, wanted: Vec<(String, String)>) -> Res<Vec<mobs::Mob>> {
+    mobs::load(&app.core.paths, &wanted)
 }
 
 /* ── Java ───────────────────────────────────────────────── */
@@ -528,7 +532,8 @@ pub fn run() {
             modrinth_search,
             modrinth_install,
             java_probe,
-            mob_texture,
+            mobs_available,
+            mobs_load,
             java_pick,
         ])
         .run(tauri::generate_context!())

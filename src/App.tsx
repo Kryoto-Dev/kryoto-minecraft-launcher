@@ -9,8 +9,9 @@ import { applyLook } from '@/lib/look'
 import { startLive, useInstances, useTasks } from '@/lib/store'
 import { minimizeWindow, showWindow } from '@/lib/window'
 import { ProfileDialog, ProfileMenu } from '@/profiles/Profiles'
+import { setProfilePrompt } from '@/profiles/require'
 import { Welcome } from '@/boot/Welcome'
-import { Chick } from '@/chick/Chick'
+import { Mobs } from '@/mobs/Mobs'
 import { DownloadsPage } from '@/downloads/DownloadsPage'
 import { Home } from '@/library/Home'
 import { InstancePage } from '@/library/InstancePage'
@@ -83,6 +84,12 @@ function Shell() {
   const [tab, setTab] = useState<Tab>('play')
   const [selected, setSelected] = useState<string | null>(null)
   const [addingProfile, setAddingProfile] = useState(false)
+  // A game asked to start with no profile yet: what to run once there is one.
+  const [firstProfile, setFirstProfile] = useState<{ then: () => void } | null>(null)
+  useEffect(() => {
+    setProfilePrompt((then) => setFirstProfile({ then }))
+    return () => setProfilePrompt(null)
+  }, [])
   const [creating, setCreating] = useState<{ initial?: string } | null>(null)
   const [joining, setJoining] = useState<Instance | null>(null)
   const [versions, setVersions] = useState<VersionList | null>(null)
@@ -183,13 +190,14 @@ function Shell() {
                 <SettingsPage onAddProfile={() => setAddingProfile(true)} />
               </div>
             )}
-            {settings.chick ? <Chick /> : null}
+            {settings.mobs ? <Mobs count={settings.mobCount} friendlyOnly={settings.friendlyOnly} /> : null}
           </main>
           <BottomBar instances={instances} onDownloads={() => setTab('downloads')} onOpen={openInstance} />
         </>
       )}
 
       {addingProfile ? <ProfileDialog onClose={() => setAddingProfile(false)} /> : null}
+      {firstProfile ? <ProfileDialog first onClose={() => setFirstProfile(null)} onAdded={firstProfile.then} /> : null}
       {creating && versions ? (
         <NewInstanceDialog
           versions={versions}

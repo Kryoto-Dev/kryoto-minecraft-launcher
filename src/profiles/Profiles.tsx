@@ -58,8 +58,8 @@ export function ProfileMenu({ onAdd }: { onAdd: () => void }) {
   )
 }
 
-/** A new profile: the name to play under. */
-export function ProfileDialog({ onClose }: { onClose: () => void }) {
+/** A new profile: the name to play under. `first`: asked when a game starts and there is none yet. */
+export function ProfileDialog({ onClose, onAdded, first = false }: { onClose: () => void; onAdded?: () => void; first?: boolean }) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const valid = /^[A-Za-z0-9_]{3,16}$/.test(name)
@@ -69,24 +69,26 @@ export function ProfileDialog({ onClose }: { onClose: () => void }) {
       await live.refreshProfiles()
       toast(`Playing as ${profile.name}.`)
       onClose()
+      onAdded?.()
     } catch (e) {
       setError(errorText(e))
     }
   }
   return (
     <Modal
-      title="New profile"
+      title={first ? "Your name in game" : "New profile"}
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
           <Button variant="primary" disabled={!valid} onClick={() => void add()}>
-            Add profile
+            {first ? 'Save and play' : 'Add profile'}
           </Button>
         </>
       }
     >
       <div className="grid gap-4">
+        {first ? <p className="text-xs leading-relaxed text-foreground">Pick the name you play under. It's saved as your profile, and you can add more later.</p> : null}
         <label className="grid gap-2">
           <Caption>Name in game</Caption>
           <input

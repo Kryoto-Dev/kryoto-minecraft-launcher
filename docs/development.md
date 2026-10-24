@@ -32,19 +32,35 @@ official launcher's (`versions/`, `libraries/`, `assets/`), plus `runtimes/` for
 
 ## Profiles
 
-A profile is a name; its UUID is the one an offline-mode server computes
+A profile is a name. Starting a game without one asks for it first (`src/profiles/require.ts`)
+and saves it as the first profile, so nobody plays under a placeholder. Its UUID is the one an offline-mode server computes
 (`OfflinePlayer:<name>`), so worlds and server inventories follow the name. There is no
 account sign-in: profiles play singleplayer, LAN and offline-mode servers (`online-mode=false`,
 as play.kryo.to runs). The game starts with access token `0` and user type `legacy`.
 
-## The chick
+## Baby mobs
 
-`src/chick/` draws a baby chicken walking along the bottom of the window, in three.js, loaded
-only when it is shown. Its shape is the game's baby chicken model (`BabyChickenModel` in 26.x:
-its boxes, pivots and UV offsets are in `scene.ts`); its texture is read at runtime from the
-newest installed client jar (`mobs.rs`, a fixed list of allowed textures), so the launcher
-ships none of Mojang's files and the chick appears once a version that has baby chicks is
-installed. Settings, Interface turns it off; reduced motion keeps it standing still.
+`src/mobs/` draws baby mobs walking along the bottom of the window, in three.js, loaded only
+when they are shown. Nothing of Mojang's is in the launcher: `crates/kryoto-mc/src/mobs/`
+reads each mob from the newest installed client jar at the moment it is shown.
+
+- **Shape:** `model.rs` parses the mob's model class (`BabyPigModel`, `BabyZombieModel`...) and
+  runs the method that builds its body layer (the class's own or a parent's) on a small stack
+  machine that knows only the model builder calls (`CubeListBuilder`, `PartPose`,
+  `PartDefinition`, `LayerDefinition`) and the opcodes such methods use. Anything else stops
+  it, and that mob isn't shown.
+- **Look:** the mob's texture from the same jar; `mod.rs` lists the mobs, their model classes,
+  their textures and which are mean.
+- **Movement** is the launcher's own: legs, arms, heads, tails and wings are found by part name.
+
+The mobs need a version with baby models (26.1 and later). Settings, Interface: on or off, how
+many at most, and whether the mean ones (baby zombies, drowned, piglins, hoglins) may come.
+Reduced motion keeps them standing still. To check every mob against an installed game:
+
+```bash
+KRYOTO_TEST_ROOT="$APPDATA/to.kryo.minecraft" \
+  cargo test --release --manifest-path crates/kryoto-mc/Cargo.toml --lib mobs -- --include-ignored --nocapture
+```
 
 ## Linux
 

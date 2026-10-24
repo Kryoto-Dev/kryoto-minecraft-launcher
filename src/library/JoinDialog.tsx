@@ -3,6 +3,7 @@ import { Server } from 'lucide-react'
 import { Button, Caption, Modal, inputCls } from '@/ui'
 import { toastError } from '@/ui/Toasts'
 import { api, type Instance } from '@/lib/api'
+import { withProfile } from '@/profiles/require'
 
 /** Kryoto's own server, first in the list. */
 const KRYOTO_SERVER = { name: 'Kryo.to Anarchy', address: 'play.kryo.to' }
@@ -34,11 +35,7 @@ export function JoinDialog({ instance, onClose }: { instance: Instance; onClose:
     if (!target) return
     remember(target)
     onClose()
-    try {
-      await api.launch(instance.id, target)
-    } catch (e) {
-      toastError(e)
-    }
+    withProfile(() => void api.launch(instance.id, target).catch(toastError))
   }
   return (
     <Modal

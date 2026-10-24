@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
-  "description": "Kryoto's Minecraft Java Edition launcher: every version, mod loaders, mods and packs, Microsoft or offline play.",
+  "description": "Kryoto's Minecraft Java Edition launcher: every version, mod loaders, mods and packs, and baby mobs.",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/shared.mjs check && tsc --noEmit && vite build",

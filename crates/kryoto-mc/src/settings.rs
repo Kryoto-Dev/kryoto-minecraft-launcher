@@ -22,8 +22,13 @@ pub struct Settings {
     pub palette: String,
     pub radius: String,
     pub font: String,
-    /// The chick that walks along the bottom of the window.
-    pub chick: bool,
+    /// Baby mobs walking along the bottom of the window.
+    #[serde(alias = "chick")]
+    pub mobs: bool,
+    /// How many at most.
+    pub mob_count: u32,
+    /// Leave out the mean ones (baby zombies, piglins, hoglins).
+    pub friendly_only: bool,
     pub first_run_done: bool,
 }
 
@@ -41,7 +46,9 @@ impl Default for Settings {
             palette: "oled".into(),
             radius: "pill".into(),
             font: "teletext".into(),
-            chick: true,
+            mobs: true,
+            mob_count: 3,
+            friendly_only: true,
             first_run_done: false,
         }
     }

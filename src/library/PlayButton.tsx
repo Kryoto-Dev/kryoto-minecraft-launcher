@@ -5,6 +5,7 @@ import { toastError } from '@/ui/Toasts'
 import { api, type Instance } from '@/lib/api'
 import { taskFor, taskFraction, useGames, useTasks } from '@/lib/store'
 import { speed } from '@/lib/units'
+import { withProfile } from '@/profiles/require'
 
 /**
  * The one white pill on an instance: Install, Play, or Stop, and while a job
@@ -45,18 +46,19 @@ export function PlayButton({ instance, size = 'lg', onPlay }: { instance: Instan
       </div>
     )
   }
-  const play = async () => {
-    setPressed(true)
-    try {
-      if (onPlay) await onPlay()
-      else await api.launch(instance.id)
-    } catch (e) {
-      toastError(e)
-      setPressed(false)
-    }
-  }
+  const play = () =>
+    withProfile(async () => {
+      setPressed(true)
+      try {
+        if (onPlay) await onPlay()
+        else await api.launch(instance.id)
+      } catch (e) {
+        toastError(e)
+        setPressed(false)
+      }
+    })
   return (
-    <Button size={size} variant="primary" disabled={pressed} onClick={() => void play()} className={size === 'lg' ? 'min-w-40' : undefined}>
+    <Button size={size} variant="primary" disabled={pressed} onClick={play} className={size === 'lg' ? 'min-w-40' : undefined}>
       {instance.installed ? <Play className="size-4 fill-current" /> : <Download className="size-4" />}
       {instance.installed ? 'Play' : 'Install & play'}
     </Button>

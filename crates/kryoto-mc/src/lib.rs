@@ -9,7 +9,7 @@
 //! | `loaders` | Fabric, Quilt, Forge, NeoForge |
 //! | `instances`, `content` | instances and what is in their game folders |
 //! | `modrinth` | finding and installing mods and packs |
-//! | `mobs` | the chick's texture, read from an installed game |
+//! | `mobs` | baby mobs for the window, read from an installed game |
 //! | `auth` | profiles: the names players play under |
 //! | `launch`, `core` | the command line, the running game, its log |
 //! | `tasks` | progress of every long job, for the UI |

@@ -67,6 +67,7 @@ export const live = {
     }
   },
   instance: (id: string) => instances.get()?.find((i) => i.id === id) ?? null,
+  activeProfile: () => activeProfile(profiles.get()),
 }
 
 let started = false
