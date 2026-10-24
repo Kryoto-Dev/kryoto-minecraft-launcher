@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+target/
+src-tauri/target/
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+
+# Local environment files (never commit secrets)
+.env
+.env.*
+.env.local
+!.env.example
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+# Tauri generated schemas
+src-tauri/gen/
+dist-web/
+
+# Scratch files for builds (scripts/tauri-env.mjs)
+.tmp/

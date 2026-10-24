@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Kryoto Minecraft Launcher",
+  "version": "0.1.0",
+  "identifier": "to.kryo.minecraft",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1425",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Kryoto Minecraft Launcher",
+        "width": 1180,
+        "height": 740,
+        "minWidth": 960,
+        "minHeight": 620,
+        "center": true,
+        "theme": "Dark",
+        "decorations": false,
+        "transparent": false,
+        "backgroundColor": "#0a0a0a",
+        "shadow": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://cdn.modrinth.com https://*.modrinth.com https://crafatar.com https://mc-heads.net; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": ["nsis", "appimage", "deb"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp",
+        "installerIcon": "icons/icon.ico"
+      }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "publisher": "Kryoto",
+    "homepage": "https://kryo.to",
+    "category": "Game",
+    "copyright": "Kryoto",
+    "shortDescription": "Minecraft Java Edition, every version, from Kryoto",
+    "longDescription": "Kryoto Minecraft Launcher: install and play any Minecraft Java Edition version, with Fabric, Quilt, Forge and NeoForge, mods and resource packs from Modrinth, and Microsoft or offline profiles. Game files come from Mojang; nothing proprietary ships in the installer."
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Kryoto-Dev/kryoto-minecraft-launcher/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAyQ0FCMDE5QjlFODY3N0IKUldSN1oraTVHYkRLQXVjRnhMY3JqbnpRU1plSkRFMGVPTkQydlllbTU0b3E4NElyZU5OT280RzkK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

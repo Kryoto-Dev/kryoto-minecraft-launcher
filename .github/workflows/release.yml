@@ -1,0 +1,140 @@
+name: Release
+
+# Fires on a VERSION BUMP, as Kryoto Desktop's does: the first job reads the
+# version out of src-tauri/tauri.conf.json and stops unless it has no tag yet.
+# So the ritual is: bump the version in package.json, src-tauri/Cargo.toml,
+# crates/kryoto-mc/Cargo.toml and src-tauri/tauri.conf.json, add the
+# CHANGELOG.md entry, push to main.
+#
+# The installer lands on a GitHub release with the in-app updater's files: a
+# minisign signature beside it and latest.json, which every installed copy
+# reads from releases/latest/download/latest.json. Signing uses the
+# TAURI_SIGNING_PRIVATE_KEY secret (and _PASSWORD), the launcher's own key,
+# whose public half is plugins.updater.pubkey in tauri.conf.json.
+#
+# KRYOTO_MSA_CLIENT_ID (a repository variable) is the Azure app ID Microsoft
+# sign-in uses (docs/microsoft-sign-in.md). Without it the release still
+# builds; its Microsoft button says sign-in isn't set up.
+#
+# Windows only for now. The engine and the app already build on Linux (CI);
+# adding the AppImage here is a matrix entry and a latest.json key.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src-tauri/tauri.conf.json'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      needed: ${{ steps.v.outputs.needed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        shell: bash
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          pkg=$(node -p "require('./package.json').version")
+          app=$(sed -n 's/^version *= *"\(.*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)
+          engine=$(sed -n 's/^version *= *"\(.*\)"/\1/p' crates/kryoto-mc/Cargo.toml | head -n 1)
+          if [ "$version" != "$pkg" ] || [ "$version" != "$app" ] || [ "$version" != "$engine" ]; then
+            echo "::error::Versions differ: tauri.conf.json $version, package.json $pkg, src-tauri $app, kryoto-mc $engine."
+            exit 1
+          fi
+          if ! grep -q "^## $version" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## $version' section."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$version" >/dev/null 2>&1; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.needed == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - name: Require the updater signing key
+        shell: pwsh
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if (-not $env:KEY) { Write-Output "::error::TAURI_SIGNING_PRIVATE_KEY is not set: without it there is no latest.json and no installed copy ever updates."; exit 1 }
+      - run: pnpm install --frozen-lockfile
+      - name: Check
+        shell: pwsh
+        run: |
+          pnpm build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --manifest-path crates/kryoto-mc/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build the installer
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          KRYOTO_MSA_CLIENT_ID: ${{ vars.KRYOTO_MSA_CLIENT_ID }}
+        # `tauri build` only warns when the key doesn't match the public key,
+        # and every installed copy would then refuse the update. Fail instead.
+        run: |
+          pnpm app:build *>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (Select-String -Path build.log -Pattern "does not match the public key" -Quiet) { Write-Output "::error::The signing key doesn't match plugins.updater.pubkey."; exit 1 }
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ needs.check.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          $bundle = "src-tauri/target/release/bundle/nsis"
+          New-Item -ItemType Directory -Force out | Out-Null
+          $setup = Get-ChildItem "$bundle/*_${env:V}_x64-setup.exe" | Select-Object -First 1
+          $name = "Kryoto-Minecraft-Launcher_${env:V}_x64-setup.exe"
+          Copy-Item $setup.FullName "out/$name"
+          Copy-Item "$($setup.FullName).sig" "out/$name.sig"
+          $hash = (Get-FileHash "out/$name" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name" | Out-File -Encoding ascii "out/$name.sha256"
+          $manifest = @{
+            version = $env:V
+            notes = "See CHANGELOG.md"
+            pub_date = (Get-Date).ToUniversalTime().ToString("o")
+            platforms = @{
+              "windows-x86_64-nsis" = @{ signature = (Get-Content "out/$name.sig" -Raw).Trim(); url = "https://github.com/$env:REPO/releases/download/v$env:V/$name" }
+              "windows-x86_64" = @{ signature = (Get-Content "out/$name.sig" -Raw).Trim(); url = "https://github.com/$env:REPO/releases/download/v$env:V/$name" }
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Out-File -Encoding utf8NoBOM out/latest.json
+          $notes = (Get-Content CHANGELOG.md -Raw) -split "(?m)^## " | Where-Object { $_ -like "$env:V*" } | Select-Object -First 1
+          gh release create "v$env:V" out/* --repo $env:REPO --title "Kryoto Minecraft Launcher $env:V" --notes "## $notes"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

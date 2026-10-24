@@ -1,0 +1,31 @@
+[package]
+name = "kryoto-minecraft-launcher"
+version = "0.1.0"
+description = "Kryoto's Minecraft Java Edition launcher."
+authors = ["Kryoto"]
+license = "MIT"
+edition = "2021"
+
+# Desktop only, so a plain Rust library: no cdylib (which MinGW can't link
+# with Tauri's export count) and no staticlib.
+[lib]
+name = "kryoto_minecraft_launcher_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Everything Minecraft: versions, downloads, Java, loaders, mods, accounts,
+# launching. Kept apart from Tauri so it builds and tests on its own.
+kryoto-mc = { path = "../crates/kryoto-mc" }
+tauri = { version = "2", features = [] }
+tauri-plugin-updater = "2.13"
+tauri-plugin-process = "2.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+rfd = { version = "0.16", default-features = false, features = ["common-controls-v6", "gtk3"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

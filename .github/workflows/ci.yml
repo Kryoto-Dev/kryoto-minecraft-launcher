@@ -1,0 +1,104 @@
+name: CI
+
+# Every push to main and every pull request: the three versions agree, the UI
+# typechecks and builds, and the engine and the app compile, pass their tests
+# and clippy on Windows (where the launcher ships) and Linux (where it will).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    name: Versions agree
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: package.json, both Cargo.toml and tauri.conf.json have one version
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+            const conf = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")).version;
+            const cargo = (p) => (fs.readFileSync(p, "utf8").match(/^version\s*=\s*"([^"]+)"/m) || [])[1];
+            const app = cargo("src-tauri/Cargo.toml"), engine = cargo("crates/kryoto-mc/Cargo.toml");
+            console.log({ pkg, conf, app, engine });
+            if (new Set([pkg, conf, app, engine]).size !== 1) {
+              console.error("::error::Versions differ. Bump package.json, tauri.conf.json and both Cargo.toml together.");
+              process.exit(1);
+            }
+          '
+
+  ui:
+    name: UI (shared files, typecheck, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Shared files against Desktop's main (a warning, never a failure)
+        run: node scripts/shared.mjs check --remote
+
+  native:
+    name: Native (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+            crates/kryoto-mc -> target
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev libssl-dev
+      # The app embeds the UI, so it must exist before the native build.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # PowerShell on Windows: in a bash step Git's MSYS `link` shadows MSVC's.
+      - name: Engine tests and clippy
+        shell: pwsh
+        run: |
+          cargo test --locked --manifest-path crates/kryoto-mc/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo clippy --locked --all-targets --manifest-path crates/kryoto-mc/Cargo.toml -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: App clippy
+        shell: pwsh
+        run: |
+          cargo clippy --locked --all-targets --manifest-path src-tauri/Cargo.toml -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

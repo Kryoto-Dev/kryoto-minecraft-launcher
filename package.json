@@ -1,0 +1,42 @@
+{
+  "name": "kryoto-minecraft-launcher",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Kryoto's Minecraft Java Edition launcher: every version, mod loaders, mods and packs, Microsoft or offline play.",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/shared.mjs check && tsc --noEmit && vite build",
+    "app:dev": "node scripts/dev.mjs",
+    "app:build": "node scripts/build.mjs",
+    "app:build:local": "node scripts/build.mjs --local",
+    "brand": "node --experimental-strip-types scripts/brand.mjs",
+    "check:shared": "node scripts/shared.mjs check",
+    "sync:shared": "node scripts/shared.mjs sync"
+  },
+  "dependencies": {
+    "@fontsource/geist-mono": "^5.3.0",
+    "@tauri-apps/api": "~2.12.0",
+    "@tauri-apps/plugin-process": "~2.4.0",
+    "@tauri-apps/plugin-updater": "~2.13.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.34.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "~2.12.0",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "playwright": "1.62.1",
+    "sharp": "0.34.5",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
+  }
+}

@@ -1,0 +1,803 @@
+@import 'tailwindcss';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/700.css';
+
+/* `dark:` follows the class on <html>, as on kryo.to (site components
+   colour themselves with it). The shell follows the selected colour scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Kryoto design tokens - the same ones kryo.to, Forge and Desktop use.
+
+   This file is Kryoto Desktop's src/styles.css with Desktop-only parts (the
+   Store's menu view, Big Picture, phone panels) taken out. Keep the tokens and
+   palettes identical to Desktop's; launcher-only rules go at the end.
+
+   COPIED, not reinterpreted: every value comes from kryo.to/app/globals.css
+   (by way of kryoto-uploader/src/styles/globals.css, which copied it first),
+   so the client, the site and Forge are the same grey, the same radius and
+   the same face. The palettes at the bottom are the site's six, verbatim, and
+   the reader picks one in Settings exactly as on kryo.to.
+--------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Teletext';
+  src: url('/fonts/teletext-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+/* A RANGE, as Forge declares it: the Bold cut's usWeightClass is 600, and a
+   single 700 would miss it and synthesise a smeared Regular. */
+@font-face {
+  font-family: 'Teletext';
+  src: url('/fonts/teletext-bold.woff2') format('woff2');
+  font-weight: 600 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --kryo-text: 'Teletext', 'Geist Mono', ui-monospace, Consolas, monospace;
+  --kryo-text-weight: 400;
+  --kryo-word-spacing: 0.1em;
+  --kryo-radius: 16px;
+  --kryo-radius-pill: 9999px;
+  --kryo-dur-fast: 140ms;
+  --kryo-dur-base: 220ms;
+  --kryo-dur-slow: 340ms;
+  --kryo-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* ASCII art is a grid; Teletext is proportional and would tear it. */
+  --font-ascii: 'Geist Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+[data-font='mono'] {
+  --kryo-text: 'Geist Mono', ui-monospace, Consolas, monospace;
+  --kryo-word-spacing: normal;
+}
+
+[data-radius='sharp'] { --kryo-radius: 0px; --kryo-radius-pill: 0px; }
+[data-radius='soft'] { --kryo-radius: 2px; --kryo-radius-pill: 2px; }
+[data-radius='rounded'] { --kryo-radius: 5px; --kryo-radius-pill: 5px; }
+[data-radius='round'] { --kryo-radius: 10px; --kryo-radius-pill: 9999px; }
+[data-radius='pill'] { --kryo-radius: 16px; --kryo-radius-pill: 9999px; }
+
+@theme inline {
+  --font-sans: var(--kryo-text);
+  --font-mono: var(--kryo-text);
+  --font-ascii: var(--font-ascii);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-xs: var(--kryo-radius);
+  --radius-sm: var(--kryo-radius);
+  --radius-md: var(--kryo-radius);
+  --radius-lg: var(--kryo-radius);
+  --radius-xl: var(--kryo-radius-pill);
+  --radius-2xl: var(--kryo-radius-pill);
+  --radius: var(--kryo-radius);
+}
+
+/* Dark, the site's `.dark` - the base every palette overrides. The status
+   colours are the site's and Forge's, so a warning looks the same in all three. */
+:root.dark {
+  color-scheme: dark;
+  --background: oklch(0.15 0 0);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.19 0 0);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.18 0 0);
+  --popover-foreground: oklch(0.96 0 0);
+  --primary: oklch(0.97 0 0);
+  --primary-foreground: oklch(0.15 0 0);
+  --secondary: oklch(0.24 0 0);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.64 0 0);
+  --accent: oklch(0.24 0 0);
+  --accent-foreground: oklch(0.96 0 0);
+  --destructive: oklch(0.58 0.18 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.76 0.14 78);
+  --success: oklch(0.72 0.15 152);
+  --info: oklch(0.74 0.13 240);
+  --border: oklch(0.28 0 0);
+  --input: oklch(0.26 0 0);
+  --ring: oklch(0.7 0 0);
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  html, body, #root { height: 100%; overflow: hidden; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--kryo-text);
+    font-weight: var(--kryo-text-weight);
+    word-spacing: var(--kryo-word-spacing);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+  /* The reader's accent, as on kryo.to. */
+  ::selection { background: color-mix(in oklch, var(--primary) 26%, transparent); }
+
+  /* The radius preference, applied - the site's rule, with its reason: a
+     plain selector list, because Preflight pins controls square with real
+     specificity and a `:where()` would lose that tie. */
+  button:not(.rounded-full):not(.kryo-pill):not(.kryo-square),
+  [role='button']:not(.rounded-full):not(.kryo-pill):not(.kryo-square),
+  input:not(.rounded-full):not(.kryo-pill),
+  textarea:not(.rounded-full):not(.kryo-pill),
+  .border:not(.rounded-full):not(.kryo-pill):not(.kryo-square) {
+    border-radius: var(--kryo-radius);
+    font: inherit;
+  }
+  /* kryo.to's focus mark: the ink colour, 2px off the edge. The Store beside
+     this is the site, so tabbing from a Library row into a Store link must
+     not change what "focused" looks like. */
+  :focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+  /* Inside a wrapper that clips (a joined control, the copy button on a
+     command line) a ring outside would be cut away: drawn inside instead. */
+  :is(.overflow-hidden, .overflow-clip) > :focus-visible { outline-offset: -2px; }
+  button:not(:disabled), [role='button']:not(:disabled), a[href] { cursor: pointer; }
+  input, textarea { cursor: text; user-select: text; }
+  :disabled { cursor: not-allowed; }
+  img { -webkit-user-drag: none; }
+
+  html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border: 2px solid var(--background); border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+}
+
+/* ASCII art, unlayered so it out-ranks `font-mono`, descendants included. */
+.kryo-ascii-art,
+.kryo-ascii-art * {
+  font-family: var(--font-ascii);
+  word-spacing: normal;
+}
+
+@utility kryo-radius { border-radius: var(--kryo-radius); }
+@utility kryo-pill { border-radius: var(--kryo-radius-pill); }
+@utility kryo-square { border-radius: 0; }
+
+/* Motion, from the site's vocabulary. */
+@keyframes kryo-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes kryo-pop { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes kryo-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kryo-toast { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes kryo-blink { 50% { opacity: 0; } }
+.kryo-in { animation: kryo-in var(--kryo-dur-base) var(--kryo-ease-out) both; }
+/* The page that takes over when you change tab: a fade and a short slide from
+   the side the new tab is on (--tab-dx, set by the shell). */
+@keyframes kryo-tab { from { opacity: 0; transform: translateX(var(--tab-dx, 0px)); } to { opacity: 1; transform: none; } }
+.kryo-tab-in { animation: kryo-tab 260ms var(--kryo-ease-out) both; }
+.kryo-pop { animation: kryo-pop var(--kryo-dur-base) var(--kryo-ease-out) both; }
+.kryo-fade { animation: kryo-fade var(--kryo-dur-fast) ease both; }
+/* Art that is still on its way: a slow sweep, not a stand-in picture. */
+@keyframes kryo-shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.kryo-shimmer {
+  background-image: linear-gradient(100deg, transparent 30%, color-mix(in oklch, var(--foreground) 6%, transparent) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: kryo-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Linux: the sweep above moves a background, which repaints every placeholder on
+   every frame - a library full of loading covers. An opacity pulse is drawn by
+   the compositor with no repaint. */
+@keyframes kryo-pulse { 50% { opacity: 0.55; } }
+html[data-os='linux'] .kryo-shimmer {
+  background-image: none;
+  animation: kryo-pulse 1.6s ease-in-out infinite;
+}
+.kryo-toast { animation: kryo-toast 260ms var(--kryo-ease-out) both; }
+
+/* ---------------------------------------------------------------------------
+   The 3x3 matrix (ui/Matrix.tsx, kryo.to's verbatim).
+
+   Kryoto's tiny teletext alphabet for system state: working, arriving,
+   checking, waiting, done, failed, gone. Nine dots, four levels of ink, and
+   a handful of motions that all move in hard steps - a matrix switches, it
+   never glides. The component sets each dot's still-frame ink as `--o` and,
+   when the state moves, its animation inline; everything those animations
+   need is here.
+
+   The unlit level is a trace, not nothing, so the grid stays legible at rest
+   and the glyph keeps its footprint whatever it says.
+--------------------------------------------------------------------------- */
+.kryo-matrix {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 14%;
+  vertical-align: middle;
+}
+.kryo-matrix > i {
+  border-radius: 20%;
+  background: currentColor;
+  opacity: var(--o, 0.14);
+}
+
+/* orbit: a head and a two-step tail, one ring cell per 110ms. */
+@keyframes kryo-m-orbit {
+  0% { opacity: 1; }
+  12.5% { opacity: 0.55; }
+  25% { opacity: 0.3; }
+  37.5%, 100% { opacity: 0.14; }
+}
+/* sync: the same, twice round at once - two heads, opposite each other. */
+@keyframes kryo-m-orbit2 {
+  0%, 50% { opacity: 1; }
+  12.5%, 62.5% { opacity: 0.55; }
+  25%, 75% { opacity: 0.3; }
+  37.5%, 87.5%, 100% { opacity: 0.14; }
+}
+/* fill / signal / tick: four beats - nothing, one, two, all - and again. A
+   cell lights on its stage's beat and holds until the round ends. */
+@keyframes kryo-m-stage-1 { 0% { opacity: 0.14; } 25%, 100% { opacity: 1; } }
+@keyframes kryo-m-stage-2 { 0% { opacity: 0.14; } 50%, 100% { opacity: 1; } }
+@keyframes kryo-m-stage-3 { 0% { opacity: 0.14; } 75%, 100% { opacity: 1; } }
+/* scan: a lit column crossing left to right, its last position fading. */
+@keyframes kryo-m-scan {
+  0% { opacity: 1; }
+  33.333% { opacity: 0.3; }
+  66.666%, 100% { opacity: 0.14; }
+}
+/* blink: on, off. The checker runs it on alternate cells, out of phase. */
+@keyframes kryo-m-blink {
+  0% { opacity: 1; }
+  50%, 100% { opacity: 0.14; }
+}
+/* resolve: a shape's dots appear one at a time in stroke order, then hold. */
+@keyframes kryo-m-resolve {
+  from { opacity: 0.14; }
+  to { opacity: var(--o); }
+}
+
+/* Still frames. Every state's `--o` is chosen to say the same thing without
+   moving, so stopping the animation is the whole job. Both the system
+   setting and the site's own, because the site's global reduced-motion rule
+   would otherwise run each cycle once and leave the dots on its last frame. */
+@media (prefers-reduced-motion: reduce) {
+  .kryo-matrix > i { animation: none !important; }
+}
+html[data-motion='reduced'] .kryo-matrix > i { animation: none !important; }
+
+/* The wink (ui/Busy.tsx): one beat of a K, on a long wait. */
+[data-wink='k'] .kryo-matrix > i {
+  animation-play-state: paused !important;
+  opacity: 0.14 !important;
+}
+[data-wink='k'] .kryo-matrix > i:is(:nth-child(1), :nth-child(3), :nth-child(4), :nth-child(5), :nth-child(7), :nth-child(9)) {
+  opacity: 1 !important;
+}
+.kryo-blink { animation: kryo-blink 1s steps(1) infinite; }
+
+/* `.drag` areas are the window's title bar. On Windows that is native:
+   WebView2 (with wry's non-client region support) hands `app-region: drag`
+   to the system, so dragging, Aero Snap, double-click to maximize and the
+   right-click system menu are Windows' own. Controls sit outside `.drag` or
+   opt out with `.no-drag` (inside a drag region a control would lose its
+   cursor). WebKitGTK has no app-region; lib/window-drag.ts moves the window
+   there, and is the fallback anywhere the press still reaches the page. */
+.drag {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.no-drag,
+.drag button,
+.drag a,
+.drag [role='button'] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* The window buttons: Windows 11's own glyphs and sizes. */
+.kryo-caption {
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets', sans-serif;
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Art over the page (an instance's hero): a fade into the background, in whatever palette. */
+.hero-fade {
+  background: linear-gradient(to bottom, transparent 35%, color-mix(in oklch, var(--background) 70%, transparent) 75%, var(--background));
+}
+.hero-side {
+  background: linear-gradient(to right, color-mix(in oklch, var(--background) 85%, transparent), transparent 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   The site's six palettes (the dark variants), verbatim. OLED is the default,
+   as on kryo.to; the others are a choice in Settings > Interface.
+--------------------------------------------------------------------------- */
+[data-palette='oled'].dark {
+  --background: oklch(0.02 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.06 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.05 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.05 0 0);
+  --secondary: oklch(0.12 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.14 0 0);
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.14 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+  --border: oklch(0.18 0 0);
+  --input: oklch(0.16 0 0);
+  --sidebar: oklch(0.05 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.18 0 0);
+}
+
+[data-palette='amber'].dark {
+  --background: oklch(0.14 0.03 65);
+  --foreground: oklch(0.92 0.12 75);
+  --card: oklch(0.18 0.04 65);
+  --card-foreground: oklch(0.92 0.12 75);
+  --popover: oklch(0.17 0.04 65);
+  --popover-foreground: oklch(0.92 0.12 75);
+  --primary: oklch(0.88 0.14 75);
+  --primary-foreground: oklch(0.12 0.03 65);
+  --secondary: oklch(0.22 0.05 65);
+  --secondary-foreground: oklch(0.92 0.12 75);
+  --muted: oklch(0.2 0.04 65);
+  --muted-foreground: oklch(0.7 0.08 75);
+  --accent: oklch(0.22 0.05 65);
+  --accent-foreground: oklch(0.92 0.12 75);
+  --border: oklch(0.28 0.06 65);
+  --input: oklch(0.25 0.05 65);
+  --sidebar: oklch(0.17 0.04 65);
+  --sidebar-foreground: oklch(0.92 0.12 75);
+  --sidebar-border: oklch(0.28 0.06 65);
+}
+
+[data-palette='emerald'].dark {
+  --background: oklch(0.13 0.03 150);
+  --foreground: oklch(0.92 0.1 150);
+  --card: oklch(0.17 0.04 150);
+  --card-foreground: oklch(0.92 0.1 150);
+  --popover: oklch(0.16 0.04 150);
+  --popover-foreground: oklch(0.92 0.1 150);
+  --primary: oklch(0.88 0.12 150);
+  --primary-foreground: oklch(0.12 0.03 150);
+  --secondary: oklch(0.22 0.05 150);
+  --secondary-foreground: oklch(0.92 0.1 150);
+  --muted: oklch(0.2 0.04 150);
+  --muted-foreground: oklch(0.68 0.07 150);
+  --accent: oklch(0.22 0.05 150);
+  --accent-foreground: oklch(0.92 0.1 150);
+  --border: oklch(0.26 0.05 150);
+  --input: oklch(0.24 0.05 150);
+  --sidebar: oklch(0.16 0.04 150);
+  --sidebar-foreground: oklch(0.92 0.1 150);
+  --sidebar-border: oklch(0.26 0.05 150);
+}
+
+[data-palette='nord'].dark {
+  --background: oklch(0.16 0.03 240);
+  --foreground: oklch(0.93 0.03 240);
+  --card: oklch(0.2 0.04 240);
+  --card-foreground: oklch(0.93 0.03 240);
+  --popover: oklch(0.19 0.04 240);
+  --popover-foreground: oklch(0.93 0.03 240);
+  --primary: oklch(0.9 0.05 240);
+  --primary-foreground: oklch(0.14 0.03 240);
+  --secondary: oklch(0.24 0.05 240);
+  --secondary-foreground: oklch(0.93 0.03 240);
+  --muted: oklch(0.22 0.04 240);
+  --muted-foreground: oklch(0.65 0.04 240);
+  --accent: oklch(0.24 0.05 240);
+  --accent-foreground: oklch(0.93 0.03 240);
+  --border: oklch(0.28 0.05 240);
+  --input: oklch(0.26 0.05 240);
+  --sidebar: oklch(0.19 0.04 240);
+  --sidebar-foreground: oklch(0.93 0.03 240);
+  --sidebar-border: oklch(0.28 0.05 240);
+}
+
+[data-palette='sepia'].dark {
+  --background: oklch(0.16 0.02 50);
+  --foreground: oklch(0.92 0.05 50);
+  --card: oklch(0.2 0.03 50);
+  --card-foreground: oklch(0.92 0.05 50);
+  --popover: oklch(0.19 0.03 50);
+  --popover-foreground: oklch(0.92 0.05 50);
+  --primary: oklch(0.9 0.06 50);
+  --primary-foreground: oklch(0.14 0.02 50);
+  --secondary: oklch(0.24 0.04 50);
+  --secondary-foreground: oklch(0.92 0.05 50);
+  --muted: oklch(0.22 0.03 50);
+  --muted-foreground: oklch(0.66 0.04 50);
+  --accent: oklch(0.24 0.04 50);
+  --accent-foreground: oklch(0.92 0.05 50);
+  --border: oklch(0.28 0.04 50);
+  --input: oklch(0.26 0.04 50);
+  --sidebar: oklch(0.19 0.03 50);
+  --sidebar-foreground: oklch(0.92 0.05 50);
+  --sidebar-border: oklch(0.28 0.04 50);
+}
+
+[data-palette='blossom'].dark {
+  --background: oklch(0.14 0.03 350);
+  --foreground: oklch(0.93 0.08 350);
+  --card: oklch(0.18 0.04 350);
+  --card-foreground: oklch(0.93 0.08 350);
+  --popover: oklch(0.17 0.04 350);
+  --popover-foreground: oklch(0.93 0.08 350);
+  --primary: oklch(0.88 0.12 350);
+  --primary-foreground: oklch(0.13 0.03 350);
+  --secondary: oklch(0.22 0.05 350);
+  --secondary-foreground: oklch(0.93 0.08 350);
+  --muted: oklch(0.2 0.04 350);
+  --muted-foreground: oklch(0.7 0.06 350);
+  --accent: oklch(0.22 0.05 350);
+  --accent-foreground: oklch(0.93 0.08 350);
+  --border: oklch(0.27 0.05 350);
+  --input: oklch(0.25 0.05 350);
+  --sidebar: oklch(0.17 0.04 350);
+  --sidebar-foreground: oklch(0.93 0.08 350);
+  --sidebar-border: oklch(0.27 0.05 350);
+}
+
+/* A real button gives under the pointer, as on kryo.to (its
+   active:scale-[0.97]): Button and IconButton opt in with kryo-press.
+   Not rows, checkboxes, cards or art - only things drawn as buttons. Reduced
+   motion (the account's, or the system's) keeps them still. */
+@utility kryo-press {
+  transition-property: color, background-color, border-color, opacity, transform;
+  transition-duration: var(--kryo-dur-fast);
+  transition-timing-function: var(--kryo-ease-out);
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: 60ms;
+  }
+}
+html[data-motion='reduced'] .kryo-press:active {
+  transform: none;
+}
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kryo-press:active {
+    transform: none;
+  }
+}
+
+/* Tooltips (ui/GlobalTooltip.tsx), as kryo.to draws them. */
+.kryo-global-tooltip {
+  pointer-events: none;
+  animation: kryo-tooltip-in 120ms ease-out both;
+}
+.kryo-tooltip-out {
+  animation: kryo-tooltip-out 80ms ease-in both !important;
+}
+@keyframes kryo-tooltip-in {
+  from { opacity: 0; transform: translateY(2px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes kryo-tooltip-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(2px) scale(0.97); }
+}
+
+/* Light scheme and palettes, shared with kryo.to. OLED uses monochrome in light. */
+:root {
+  color-scheme: light;
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.12 0 0);
+  --card: oklch(0.96 0 0);
+  --card-foreground: oklch(0.12 0 0);
+  --popover: oklch(0.97 0 0);
+  --popover-foreground: oklch(0.12 0 0);
+  --primary: oklch(0.1 0 0);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.92 0 0);
+  --secondary-foreground: oklch(0.12 0 0);
+  --muted: oklch(0.93 0 0);
+  --muted-foreground: oklch(0.48 0 0);
+  --accent: oklch(0.92 0 0);
+  --accent-foreground: oklch(0.12 0 0);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  /* Shared status colours, adjusted for a light background. */
+  --warning: oklch(0.62 0.15 75);
+  --success: oklch(0.56 0.14 150);
+  --border: oklch(0.84 0 0);
+  --input: oklch(0.86 0 0);
+  --ring: oklch(0.4 0 0);
+  --chart-1: oklch(0.12 0 0);
+  --chart-2: oklch(0.3 0 0);
+  --chart-3: oklch(0.5 0 0);
+  --chart-4: oklch(0.7 0 0);
+  --chart-5: oklch(0.86 0 0);
+  /* shadcn primitives read this one; keep it on the reader's choice. */
+  --radius: var(--kryo-radius);
+  --sidebar: oklch(0.96 0 0);
+  --sidebar-foreground: oklch(0.12 0 0);
+  --sidebar-primary: oklch(0.1 0 0);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.92 0 0);
+  --sidebar-accent-foreground: oklch(0.12 0 0);
+  --sidebar-border: oklch(0.84 0 0);
+  --sidebar-ring: oklch(0.4 0 0);
+}
+[data-palette='amber']:not(.dark) {
+  --background: oklch(0.97 0.02 75);
+  --foreground: oklch(0.22 0.08 65);
+  --card: oklch(0.94 0.03 75);
+  --card-foreground: oklch(0.22 0.08 65);
+  --popover: oklch(0.95 0.03 75);
+  --popover-foreground: oklch(0.22 0.08 65);
+  --primary: oklch(0.25 0.09 65);
+  --primary-foreground: oklch(0.97 0.02 75);
+  --secondary: oklch(0.9 0.04 75);
+  --secondary-foreground: oklch(0.22 0.08 65);
+  --muted: oklch(0.88 0.04 75);
+  --muted-foreground: oklch(0.45 0.06 65);
+  --accent: oklch(0.9 0.04 75);
+  --accent-foreground: oklch(0.22 0.08 65);
+  --border: oklch(0.82 0.05 75);
+  --input: oklch(0.85 0.04 75);
+  --sidebar: oklch(0.94 0.03 75);
+  --sidebar-foreground: oklch(0.22 0.08 65);
+  --sidebar-border: oklch(0.82 0.05 75);
+}
+[data-palette='emerald']:not(.dark) {
+  --background: oklch(0.97 0.02 150);
+  --foreground: oklch(0.2 0.06 150);
+  --card: oklch(0.94 0.03 150);
+  --card-foreground: oklch(0.2 0.06 150);
+  --popover: oklch(0.95 0.03 150);
+  --popover-foreground: oklch(0.2 0.06 150);
+  --primary: oklch(0.22 0.08 150);
+  --primary-foreground: oklch(0.97 0.02 150);
+  --secondary: oklch(0.9 0.04 150);
+  --secondary-foreground: oklch(0.2 0.06 150);
+  --muted: oklch(0.88 0.04 150);
+  --muted-foreground: oklch(0.42 0.05 150);
+  --accent: oklch(0.9 0.04 150);
+  --accent-foreground: oklch(0.2 0.06 150);
+  --border: oklch(0.82 0.04 150);
+  --input: oklch(0.85 0.04 150);
+  --sidebar: oklch(0.94 0.03 150);
+  --sidebar-foreground: oklch(0.2 0.06 150);
+  --sidebar-border: oklch(0.82 0.04 150);
+}
+[data-palette='nord']:not(.dark) {
+  --background: oklch(0.97 0.01 240);
+  --foreground: oklch(0.18 0.04 240);
+  --card: oklch(0.94 0.02 240);
+  --card-foreground: oklch(0.18 0.04 240);
+  --popover: oklch(0.95 0.02 240);
+  --popover-foreground: oklch(0.18 0.04 240);
+  --primary: oklch(0.2 0.05 240);
+  --primary-foreground: oklch(0.97 0.01 240);
+  --secondary: oklch(0.9 0.03 240);
+  --secondary-foreground: oklch(0.18 0.04 240);
+  --muted: oklch(0.88 0.03 240);
+  --muted-foreground: oklch(0.44 0.04 240);
+  --accent: oklch(0.9 0.03 240);
+  --accent-foreground: oklch(0.18 0.04 240);
+  --border: oklch(0.82 0.03 240);
+  --input: oklch(0.85 0.03 240);
+  --sidebar: oklch(0.94 0.02 240);
+  --sidebar-foreground: oklch(0.18 0.04 240);
+  --sidebar-border: oklch(0.82 0.03 240);
+}
+[data-palette='sepia']:not(.dark) {
+  --background: oklch(0.95 0.03 60);
+  --foreground: oklch(0.22 0.05 50);
+  --card: oklch(0.91 0.04 60);
+  --card-foreground: oklch(0.22 0.05 50);
+  --popover: oklch(0.93 0.04 60);
+  --popover-foreground: oklch(0.22 0.05 50);
+  --primary: oklch(0.25 0.06 50);
+  --primary-foreground: oklch(0.95 0.03 60);
+  --secondary: oklch(0.87 0.05 60);
+  --secondary-foreground: oklch(0.22 0.05 50);
+  --muted: oklch(0.85 0.05 60);
+  --muted-foreground: oklch(0.45 0.04 50);
+  --accent: oklch(0.87 0.05 60);
+  --accent-foreground: oklch(0.22 0.05 50);
+  --border: oklch(0.8 0.05 60);
+  --input: oklch(0.82 0.05 60);
+  --sidebar: oklch(0.91 0.04 60);
+  --sidebar-foreground: oklch(0.22 0.05 50);
+  --sidebar-border: oklch(0.8 0.05 60);
+}
+[data-palette='blossom']:not(.dark) {
+  --background: oklch(0.97 0.02 350);
+  --foreground: oklch(0.22 0.07 350);
+  --card: oklch(0.94 0.03 350);
+  --card-foreground: oklch(0.22 0.07 350);
+  --popover: oklch(0.95 0.03 350);
+  --popover-foreground: oklch(0.22 0.07 350);
+  --primary: oklch(0.26 0.09 350);
+  --primary-foreground: oklch(0.97 0.02 350);
+  --secondary: oklch(0.91 0.035 350);
+  --secondary-foreground: oklch(0.22 0.07 350);
+  --muted: oklch(0.89 0.035 350);
+  --muted-foreground: oklch(0.46 0.06 350);
+  --accent: oklch(0.91 0.035 350);
+  --accent-foreground: oklch(0.22 0.07 350);
+  --border: oklch(0.83 0.045 350);
+  --input: oklch(0.86 0.04 350);
+  --sidebar: oklch(0.94 0.03 350);
+  --sidebar-foreground: oklch(0.22 0.07 350);
+  --sidebar-border: oklch(0.83 0.045 350);
+}
+:root:not(.dark) { --info: oklch(0.55 0.14 240); }
+
+/* Calendar accents layer over the saved palette; removing data-season restores it. */
+:root:not(.dark)[data-season='halloween'] {
+  --primary: #a74308;
+  --primary-foreground: #fffaf3;
+  --ring: #a74308;
+  --season-decoration: #bd540e;
+}
+:root.dark[data-season='halloween'] {
+  --primary: #ffad56;
+  --primary-foreground: #241407;
+  --ring: #ffad56;
+  --season-decoration: #ffa95a;
+}
+:root:not(.dark)[data-season='christmas'] {
+  --primary: #236541;
+  --primary-foreground: #ffffff;
+  --ring: #236541;
+  --season-decoration: #438363;
+}
+:root.dark[data-season='christmas'] {
+  --primary: #8fd6ad;
+  --primary-foreground: #10291c;
+  --ring: #8fd6ad;
+  --season-decoration: #b1dfc8;
+}
+:root:not(.dark)[data-season='new-year'] {
+  --primary: #765700;
+  --primary-foreground: #ffffff;
+  --ring: #765700;
+  --season-decoration: #a08121;
+}
+:root.dark[data-season='new-year'] {
+  --primary: #f4d477;
+  --primary-foreground: #27200b;
+  --ring: #f4d477;
+  --season-decoration: #f4d477;
+}
+:root:not(.dark)[data-season='valentine'] {
+  --primary: #a72b59;
+  --primary-foreground: #ffffff;
+  --ring: #a72b59;
+  --season-decoration: #bb4c74;
+}
+:root.dark[data-season='valentine'] {
+  --primary: #ff9fc3;
+  --primary-foreground: #321322;
+  --ring: #ff9fc3;
+  --season-decoration: #f29aba;
+}
+:root:not(.dark)[data-season='easter'] {
+  --primary: #537025;
+  --primary-foreground: #ffffff;
+  --ring: #537025;
+  --season-decoration: #76944b;
+}
+:root.dark[data-season='easter'] {
+  --primary: #c1da88;
+  --primary-foreground: #202a0e;
+  --ring: #c1da88;
+  --season-decoration: #c1da88;
+}
+:root:not(.dark)[data-season='winter'] {
+  --primary: #286680;
+  --primary-foreground: #ffffff;
+  --ring: #286680;
+  --season-decoration: #4b8da9;
+}
+:root.dark[data-season='winter'] {
+  --primary: #a2d6eb;
+  --primary-foreground: #10242d;
+  --ring: #a2d6eb;
+  --season-decoration: #a2d6eb;
+}
+
+/* Linux (WebKitGTK): a blur behind a panel is redrawn on the CPU on every
+   frame anything under it changes, and with the window full of moving art it
+   was most of what made the Linux client feel slow. The panels keep their
+   near-solid fill, which is what they mostly showed anyway. */
+/* Linux: the window is see-through (tauri.linux.conf.json), so the corners are
+   the page's own. Square again once it fills the screen. */
+html[data-os='linux']:not([data-frame='square']),
+html[data-os='linux']:not([data-frame='square']) body {
+  background: transparent;
+}
+html[data-os='linux']:not([data-frame='square']) #root {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--background);
+}
+html[data-os='linux'] .backdrop-blur,
+html[data-os='linux'] .backdrop-blur-sm,
+html[data-os='linux'] .backdrop-blur-md,
+html[data-os='linux'] .backdrop-blur-lg {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Launcher-only.
+--------------------------------------------------------------------------- */
+
+/* Blocks (ui/BlockIcon.tsx) move like the matrix: in hard steps. Each pixel
+   carries its build order (--i) and a random phase (--g). */
+.kryo-block polygon { transition: opacity 0s; }
+.kryo-block-build polygon {
+  animation: kryo-block-place 1ms steps(1) both;
+  animation-delay: calc(var(--i) * 6ms);
+}
+@keyframes kryo-block-place { 0% { opacity: 0; } }
+.kryo-block-glint polygon {
+  animation: kryo-block-glint 2.8s steps(1) infinite;
+  animation-delay: calc(var(--g) * -2.8s);
+}
+.kryo-block-build.kryo-block-glint polygon {
+  animation: kryo-block-place 1ms steps(1) both, kryo-block-glint 2.8s steps(1) infinite;
+  animation-delay: calc(var(--i) * 6ms), calc(var(--g) * -2.8s);
+}
+@keyframes kryo-block-glint {
+  0%, 90% { filter: none; }
+  91%, 95% { filter: brightness(1.55); }
+}
+/* Pointing at a block in a list makes it glint. */
+.group:hover .kryo-block polygon,
+button:hover > .kryo-block polygon {
+  animation: kryo-block-glint 1.4s steps(1) infinite;
+  animation-delay: calc(var(--g) * -1.4s);
+}
+
+/* The game console: a log is read, copied and searched. */
+.kryo-log {
+  font-family: var(--font-ascii);
+  word-spacing: normal;
+  user-select: text;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
