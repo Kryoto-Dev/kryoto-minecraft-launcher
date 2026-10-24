@@ -103,7 +103,9 @@ The real thing (downloads Minecraft, opens its window, stops it):
 ## Release
 
 Bump the version in `package.json`, `src-tauri/Cargo.toml`, `crates/kryoto-mc/Cargo.toml` and
-`src-tauri/tauri.conf.json`, add the `CHANGELOG.md` entry and push to `main`. The release
+`src-tauri/tauri.conf.json`, and the crates' entries in `src-tauri/Cargo.lock` and
+`crates/kryoto-mc/Cargo.lock` (CI builds with `--locked`), add the `CHANGELOG.md` entry and push
+to `main`. The release
 workflow builds, signs and publishes `v<version>`; installed copies update themselves.
 
 ## License

@@ -3,8 +3,9 @@ name: Release
 # Fires on a VERSION BUMP, as Kryoto Desktop's does: the first job reads the
 # version out of src-tauri/tauri.conf.json and stops unless it has no tag yet.
 # So the ritual is: bump the version in package.json, src-tauri/Cargo.toml,
-# crates/kryoto-mc/Cargo.toml and src-tauri/tauri.conf.json, add the
-# CHANGELOG.md entry, push to main.
+# crates/kryoto-mc/Cargo.toml and src-tauri/tauri.conf.json, and the two
+# crates' entries in src-tauri/Cargo.lock and crates/kryoto-mc/Cargo.lock
+# (builds run --locked), add the CHANGELOG.md entry, push to main.
 #
 # The installers land on a draft release: Windows (NSIS setup), Linux
 # (AppImage, .deb, .rpm). Beside each is the in-app updater's minisign
