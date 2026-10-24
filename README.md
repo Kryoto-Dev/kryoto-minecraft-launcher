@@ -12,6 +12,43 @@ The installer holds no Mojang files. Minecraft and the Java it runs on download 
 own servers when a player installs a version; loaders come from their makers, mods and packs
 from Modrinth.
 
+![The launcher's home: the instance to continue, recent ones, and baby mobs walking along the bottom](docs/screenshots/home.webp)
+
+## What it does
+
+**Every version.** Releases, snapshots, Beta and Alpha, straight from Mojang's list, with the
+Java each one needs and the mod loaders it supports.
+
+![Versions: releases, snapshots and Beta & Alpha, with each version's Java, size and loaders](docs/screenshots/versions.webp)
+
+**Instances with any loader.** Each instance keeps its own worlds, mods, packs and settings.
+Pick Vanilla, Fabric, Quilt, Forge or NeoForge and the loader version, and it downloads.
+
+![New instance: Minecraft version, mod loader and its version, name and icon](docs/screenshots/new-instance.webp)
+
+**Mods, resource packs and shaders from Modrinth.** Only what fits the instance's version and
+loader is shown; the mods a mod needs come with it. Drop your own files on the window, turn mods
+on and off.
+
+![Modrinth search inside an instance, showing mods for Fabric 26.3](docs/screenshots/modrinth.webp)
+
+![An instance's mods: Sodium, Iris, Lithium and Mod Menu, with Fabric API added because they need it](docs/screenshots/mods.webp)
+
+**Downloads that skip what's there.** Files already on the PC are never downloaded twice,
+failed ones are retried, and everything is checked against Mojang's checksums.
+
+![Downloads: Forge 1.12.2 installing, earlier downloads below](docs/screenshots/downloads.webp)
+
+**Play anywhere offline mode lets you.** Pick a name and play singleplayer, LAN or offline-mode
+servers. Join a server straight from the launcher; Kryo.to Anarchy is one click.
+
+![Join a server: Kryo.to Anarchy, or any address](docs/screenshots/join-server.webp)
+
+**Baby mobs.** Chicks, piglets, calves, puppies, foals and more walk along the bottom of the
+window in 3D, read from the game you installed. Choose how many, and whether the mean ones come.
+
+![Settings > Interface: palette, corners, type and the baby mobs](docs/screenshots/baby-mobs.webp)
+
 ## Quick start
 
 Install Node 22+, pnpm 10 and Rust, then:

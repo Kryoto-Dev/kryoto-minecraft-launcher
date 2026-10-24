@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- A new icon: a grass block with the K// on its front, so the launcher is easy to tell apart
+  from Kryoto Desktop and Forge on the taskbar and desktop.
+
 ## 0.1.0
 
 The first version.

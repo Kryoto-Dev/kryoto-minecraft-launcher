@@ -1,9 +1,10 @@
 // Render Kryoto Minecraft Launcher's brand files from code: `pnpm brand`.
 //
 // Kryoto Desktop's scripts/brand.mjs, with one change: where Desktop puts the
-// K// on a screen, the launcher puts it on a block. Same tile, same mark
-// (src/ui/ascii/mark.ts, traced from kryo.to's), the same double line the
-// mark's shadow uses. Writes:
+// K// on a screen, the launcher prints it on the front of a grass block. Same
+// tile and mark (src/ui/ascii/mark.ts, traced from kryo.to's); the block's
+// green top is what tells it apart from Desktop and Forge at every size,
+// down to the taskbar's. Writes:
 //
 //   src-tauri/icons/       icon.png, 32x32.png, 128x128.png, 128x128@2x.png, icon.ico
 //   src-tauri/installer/   header.bmp (150x57), sidebar.bmp (164x314)
@@ -49,33 +50,108 @@ function block(cx, cy, r, t, gap, ink = INK, opacity = 1) {
   return lines.join('')
 }
 
+/** The same pixels every run: a tiny LCG seeded per face. */
+function shades(seed) {
+  let s = seed >>> 0
+  return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32)
+}
+
+const GRASS = ['#5fa83b', '#58a034', '#67b142', '#4f9530', '#6cb846']
+const DIRT = ['#7a5233', '#6e4a2e', '#86603d', '#5f3f27', '#734d30']
+const N = 8
+
+/** A face's colour at cell (i, j): grass on top, dirt with a grass fringe on the sides. */
+function cellColors(side, seed) {
+  const rnd = shades(seed)
+  const pick = (list) => list[Math.floor(rnd() * list.length)]
+  const cells = []
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      const grass = !side || j === 0 || (j === 1 && rnd() < 0.55) || (j === 2 && rnd() < 0.12)
+      cells.push(pick(grass ? GRASS : DIRT))
+    }
+  }
+  return cells
+}
+
+/** A colour darkened for a face turned from the light. */
+function dim(hex, f) {
+  const n = parseInt(hex.slice(1), 16)
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * f))
+  return `rgb(${c.join(',')})`
+}
+
+/**
+ * A grass block in isometric view, N x N pixels to a face, around (cx, cy)
+ * with `r` from the centre to each corner. Each face is drawn in a unit square
+ * mapped onto it, so the K// printed on the left face lies flat on it.
+ */
+function grassBlock(cx, cy, r, { mark = true, outline = 0 } = {}) {
+  const c = Math.cos(Math.PI / 6) * r
+  // origin, u (along the face's top edge), v (down the face): a unit square onto each face.
+  const faces = [
+    { m: [c, -r / 2, c, r / 2, cx - c, cy - r / 2], side: false, light: 1, seed: 7 },
+    { m: [c, r / 2, 0, r, cx - c, cy - r / 2], side: true, light: 0.86, seed: 11 },
+    { m: [c, -r / 2, 0, r, cx, cy], side: true, light: 0.64, seed: 23 },
+  ]
+  const px = 1 / N
+  let out = ''
+  for (const f of faces) {
+    const cells = cellColors(f.side, f.seed)
+    let rects = ''
+    cells.forEach((col, n) => {
+      const i = n % N
+      const j = Math.floor(n / N)
+      // A hair over a pixel each way, so no seam shows between neighbours.
+      rects += `<rect x="${i * px - 0.002}" y="${j * px - 0.002}" width="${px + 0.004}" height="${px + 0.004}" fill="${dim(col, f.light)}"/>`
+    })
+    out += `<g transform="matrix(${f.m.join(' ')})">${rects}</g>`
+  }
+  if (mark) {
+    // On the left face, below the grass: the mark and its shadow a pixel down-right.
+    const w = 0.78
+    const k = w / MARK_W
+    const h = MARK_H * k
+    const x = (1 - w) / 2
+    const y = 0.36 + (0.6 - h) / 2
+    const left = faces[1].m.join(' ')
+    out += `<g transform="matrix(${left})"><path transform="translate(${x + 0.035} ${y + 0.035}) scale(${k})" d="${MARK_PATH}" fill="#000" fill-opacity="0.45"/><path transform="translate(${x} ${y}) scale(${k})" d="${MARK_PATH}" fill="#f4f4f4"/></g>`
+  }
+  if (outline) {
+    const hex = [
+      [cx, cy - r],
+      [cx + c, cy - r / 2],
+      [cx + c, cy + r / 2],
+      [cx, cy + r],
+      [cx - c, cy + r / 2],
+      [cx - c, cy - r / 2],
+    ]
+    out += `<polygon points="${hex.map((q) => q.join(',')).join(' ')}" fill="none" stroke="#000" stroke-opacity="0.55" stroke-width="${outline}" stroke-linejoin="round"/>`
+  }
+  return out
+}
+
 function iconSvg(size) {
   const S = 1024
   const r = S * 0.22
-  const markW = S * 0.4
-  const k = markW / MARK_W
-  const markH = MARK_H * k
-  const cx = S / 2
-  const cy = S * 0.47
-  const radius = S * 0.36
-  const t = S * 0.012
-  const gap = S * 0.014
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${S} ${S}">
   <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1a1a"/><stop offset="1" stop-color="#060606"/></linearGradient></defs>
   <rect width="${S}" height="${S}" rx="${r}" fill="url(#bg)"/>
   <rect x="3" y="3" width="${S - 6}" height="${S - 6}" rx="${r - 3}" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="6"/>
-  ${block(cx, cy, radius, t, gap)}
-  <path transform="translate(${cx - markW / 2} ${cy + radius * 0.5 - markH / 2}) scale(${k})" d="${MARK_PATH}" fill="${INK}"/>
+  <ellipse cx="${S / 2}" cy="${S * 0.85}" rx="${S * 0.3}" ry="${S * 0.045}" fill="#000" fill-opacity="0.5"/>
+  ${grassBlock(S / 2, S * 0.5, S * 0.37)}
 </svg>`
 }
 
-/** Taskbar and tray sizes, as Desktop's: the mark alone, as big as it goes. */
+/**
+ * Taskbar and tray sizes: the block alone, filling the square, so it is the
+ * green block beside Desktop's and Forge's K// rather than a third K//. The
+ * mark comes back at 32 px, where it can be read.
+ */
 async function smallIcon(size) {
-  const S = size * 8
-  const markW = S * 0.86
-  const k = markW / MARK_W
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}"><rect width="${S}" height="${S}" rx="${S * 0.12}" fill="#000"/><path transform="translate(${(S - markW) / 2} ${(S - MARK_H * k) / 2}) scale(${k})" d="${MARK_PATH}" fill="#fff"/></svg>`
-  return sharp(Buffer.from(svg)).resize(size, size, { kernel: 'lanczos3' }).sharpen({ sigma: 0.6 }).png({ compressionLevel: 9 }).toBuffer()
+  const S = 512
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${grassBlock(S / 2, S / 2, S * 0.5, { mark: size >= 32, outline: S * 0.02 })}</svg>`
+  return sharp(Buffer.from(svg)).resize(size, size, { kernel: 'lanczos3' }).png({ compressionLevel: 9 }).toBuffer()
 }
 
 const icon = (size) => (size <= 48 ? smallIcon(size) : sharp(Buffer.from(iconSvg(size))).png({ compressionLevel: 9 }).toBuffer())
