@@ -14,7 +14,7 @@ use kryoto_mc::content::{self, Kind};
 use kryoto_mc::core::Core;
 use kryoto_mc::instances::{self, Instance, LaunchOverrides, Loader};
 use kryoto_mc::paths::Paths;
-use kryoto_mc::{auth, java, launch, loaders, logging, meta, mobs, modrinth, settings, tasks};
+use kryoto_mc::{auth, java, launch, loaders, logging, meta, mobs, modrinth, mrpack, settings, tasks};
 
 struct App {
     core: Core,
@@ -402,6 +402,40 @@ async fn modrinth_install(app: State<'_, App>, id: String, kind: String, project
     result
 }
 
+/// A Modrinth modpack, picked with the system's dialog.
+#[tauri::command(async)]
+fn modpack_pick() -> Option<String> {
+    rfd::FileDialog::new().add_filter("Modrinth modpack", &["mrpack"]).set_title("Import a modpack").pick_file().map(|p| p.display().to_string())
+}
+
+/// Make an instance from a `.mrpack`, then download its mods and install it.
+#[tauri::command]
+async fn modpack_import(app: State<'_, App>, path: String) -> Res<Instance> {
+    let created = mrpack::create(&app.core.paths, std::path::Path::new(&path)).await?;
+    let core = app.core.clone();
+    let id = created.id.clone();
+    tauri::async_runtime::spawn(async move { add_pack_files(&core, &id).await });
+    Ok(created)
+}
+
+/// "Try again" for a modpack's files.
+#[tauri::command]
+async fn modpack_files(app: State<'_, App>, id: String) -> Res<()> {
+    let core = app.core.clone();
+    tauri::async_runtime::spawn(async move { add_pack_files(&core, &id).await });
+    Ok(())
+}
+
+async fn add_pack_files(core: &Core, id: &str) {
+    let result = match mrpack::add_files(core, id).await {
+        Ok(()) => core.install(id, false).await.map(|_| ()),
+        Err(e) => Err(e),
+    };
+    if let Err(e) = result {
+        logging::write(&core.paths, "warn", "modpack", &format!("{id}: {e}"));
+    }
+}
+
 /// The baby mobs the installed game has.
 #[tauri::command(async)]
 fn mobs_available(app: State<App>) -> Res<Vec<mobs::MobInfo>> {
@@ -531,6 +565,9 @@ pub fn run() {
             content_pick,
             modrinth_search,
             modrinth_install,
+            modpack_pick,
+            modpack_import,
+            modpack_files,
             java_probe,
             mobs_available,
             mobs_load,

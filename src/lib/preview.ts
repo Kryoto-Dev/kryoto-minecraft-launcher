@@ -255,6 +255,21 @@ export async function previewCall<T>(command: string, args: Record<string, unkno
     case 'modrinth_install':
       await new Promise((r2) => setTimeout(r2, 900))
       return r([args.title])
+    case 'modpack_pick':
+      return r('C:\Users\you\Downloads\Friends SMP.mrpack')
+    case 'modpack_import': {
+      const created: Instance = { id: `i${Date.now()}`, name: 'Friends SMP', gameVersion: '1.21.1', versionType: 'release', loader: { kind: 'fabric', version: '0.16.10' }, icon: null, launchVersion: null, installed: false, created: now(), lastPlayed: null, playSeconds: 0, overrides }
+      instances = [...instances, created]
+      fakeTask(`Adding ${created.name}'s mods`, created.id, 180_000_000, () =>
+        fakeTask(`Installing ${created.name}`, created.id, 600_000_000, () => {
+          instances = instances.map((i) => (i.id === created.id ? { ...i, installed: true } : i))
+          previewBus.emit('instances-changed', null)
+        }),
+      )
+      return r(created)
+    }
+    case 'modpack_files':
+      return r(null)
     case 'java_probe':
       return r({ path: args.path, version: '21.0.7', major: 21, arch: 'amd64', vendor: 'Microsoft' })
     case 'java_pick':

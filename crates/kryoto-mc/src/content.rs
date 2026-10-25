@@ -82,7 +82,7 @@ pub fn write_index(paths: &Paths, instance: &str, index: &Index) -> Result<(), S
     std::fs::write(index_path(paths, instance), serde_json::to_vec_pretty(index).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
 
-fn index_key(kind: Kind, file: &str) -> String {
+pub(crate) fn index_key(kind: Kind, file: &str) -> String {
     format!("{kind:?}/{}", file.trim_end_matches(".disabled")).to_lowercase()
 }
 

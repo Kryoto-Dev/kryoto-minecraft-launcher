@@ -516,8 +516,13 @@ impl Games {
             };
             let _ = forward.await;
             let code = status.ok().and_then(|s| s.code());
-            let log = games.log(&id);
+            let mut log = games.log(&id);
             let crash_report = newest_crash_report(&game_dir, started);
+            // The game doesn't always print the report it saved; its first
+            // lines name the cause.
+            if let Some(text) = crash_report.as_ref().and_then(|p| std::fs::read_to_string(p).ok()) {
+                log.extend(text.lines().take(120).map(|l| LogLine { line: l.to_string(), stream: "err" }));
+            }
             let hint = if stopped_by_player || code == Some(0) { None } else { Some(explain_exit(code, &log, crash_report.is_some())) };
             let exit = Exit { code, seconds: now().saturating_sub(started), hint, crash_report: crash_report.map(|p| p.display().to_string()), stopped_by_player };
             {
@@ -568,6 +573,17 @@ pub fn explain_exit(code: Option<i32>, log: &[LogLine], crash_report: bool) -> S
     }
     if has("Incompatible mods found") || has("Mod resolution failed") || has("FormattedException") || has("Missing or unsupported mandatory dependencies") {
         return "A mod doesn't fit this Minecraft version, this loader or another mod. The log names which one.".into();
+    }
+    // A mod's patches no longer match the game the loader built: the mod was
+    // made for another build of the loader.
+    if has("MixinApplyError") || has("InvalidInjectionException") || has("MixinTransformerError") {
+        let failing = regex::Regex::new(r"Mixin \[[^\]]*? from mod ([A-Za-z0-9_.-]+)\][^\n]*FAILED")
+            .ok()
+            .and_then(|re| re.captures(&tail).map(|c| c[1].to_string()));
+        return match failing {
+            Some(m) => format!("The mod \"{m}\" doesn't fit this build of the mod loader. Add it again from Modrinth to get its newest file, or remove it."),
+            None => "A mod doesn't fit this build of the mod loader. The log names which one; add it again from Modrinth to get its newest file, or remove it.".into(),
+        };
     }
     if has("ModLoadingException") || has("LoadingFailedException") || has("Failed to load mod") {
         return "A mod failed to load. The log names which one; remove or update it.".into();
@@ -623,5 +639,7 @@ mod tests {
         assert!(explain_exit(Some(1), &[line("java.lang.UnsupportedClassVersionError: net/minecraft/client/main/Main")], false).contains("newer Java"));
         assert!(explain_exit(Some(1), &[line("Error occurred during initialization of VM"), line("Could not reserve enough space for 8388608KB object heap")], false).contains("memory"));
         assert!(explain_exit(Some(-1), &[], true).contains("crash report"));
+        let mixin = line("Caused by: org.spongepowered.asm.mixin.throwables.MixinApplyError: Mixin [sodium-neoforge.mixins.json:platform.neoforge.LevelExtractorMixin from mod sodium] from phase [DEFAULT] in config [sodium-neoforge.mixins.json] FAILED during APPLY");
+        assert!(explain_exit(Some(1), &[mixin], true).contains("\"sodium\""));
     }
 }

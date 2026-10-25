@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.2
+
+- Import a Modrinth modpack (`.mrpack`): Import a modpack on the home page, or drop the file
+  on the window. It becomes an instance with the pack's Minecraft version, loader, mods and
+  configs, the mods named from Modrinth; a pack that would put files outside its instance or
+  download from somewhere Modrinth packs may not is refused.
+- Mods from Modrinth come in their newest release or beta, not an older release: Sodium
+  0.9.2 crashed NeoForge 26.3.0.99 on start, and 0.9.3-beta.1 runs. Add a mod again to get
+  the newer file.
+- A mod whose patches no longer fit the loader's build is named when the game stops, with
+  what to do about it, also when only the crash report says so.
+
 ## 0.1.1
 
 - A new icon: a grass block with the K// on its front, so the launcher is easy to tell apart

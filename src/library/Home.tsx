@@ -1,4 +1,4 @@
-import { Layers, Plus, Server } from 'lucide-react'
+import { Layers, PackageOpen, Plus, Server } from 'lucide-react'
 import { Button, Caption, Label } from '@/ui'
 import { BlockIcon, blockFor } from '@/ui/BlockIcon'
 import { formatLastPlayed, formatPlaytime } from '@/lib/format'
@@ -11,6 +11,7 @@ export function Home({
   versions,
   onOpen,
   onNew,
+  onImport,
   onBrowse,
   onJoin,
 }: {
@@ -18,6 +19,7 @@ export function Home({
   versions: VersionList | null
   onOpen: (id: string) => void
   onNew: (gameVersion?: string) => void
+  onImport: () => void
   onBrowse: () => void
   onJoin: (instance: Instance) => void
 }) {
@@ -44,7 +46,11 @@ export function Home({
             <Button size="lg" onClick={onBrowse}>
               <Layers className="size-4" /> All versions
             </Button>
+            <Button size="lg" onClick={onImport}>
+              <PackageOpen className="size-4" /> Import a modpack
+            </Button>
           </div>
+          <p className="text-[11px] text-muted-foreground">Got a .mrpack from a friend or a server? Import it, or drop it on this window.</p>
         </div>
       </div>
     )
@@ -111,6 +117,9 @@ export function Home({
           ) : null}
           <Button onClick={onBrowse}>
             <Layers className="size-3.5" /> All versions
+          </Button>
+          <Button onClick={onImport} title="A Modrinth modpack (.mrpack), with its mods and configs. You can also drop one on this window.">
+            <PackageOpen className="size-3.5" /> Import a modpack
           </Button>
         </div>
       </section>

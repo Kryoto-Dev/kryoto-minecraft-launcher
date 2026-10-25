@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { Plus } from 'lucide-react'
 import { Busy, Button } from '@/ui'
 import { Toasts, toast, toastError } from '@/ui/Toasts'
 import { api, type AppInfo, type GameState, type Instance, type Settings, type VersionList } from '@/lib/api'
 import { App as AppCtx, useApp } from '@/lib/app-context'
-import { errorText, on } from '@/lib/bridge'
+import { errorText, isTauri, on } from '@/lib/bridge'
 import { applyLook } from '@/lib/look'
-import { startLive, useInstances, useTasks } from '@/lib/store'
+import { isModpack } from '@/lib/modpack'
+import { live, startLive, useInstances, useTasks } from '@/lib/store'
 import { minimizeWindow, showWindow } from '@/lib/window'
 import { ProfileDialog, ProfileMenu } from '@/profiles/Profiles'
 import { setProfilePrompt } from '@/profiles/require'
@@ -129,6 +131,40 @@ function Shell() {
   const newInstance = (initial?: string) => setCreating({ initial })
   const working = tasks.filter((t) => t.state === 'running').length
 
+  // A Modrinth modpack becomes an instance; its mods download, then the game.
+  const importPack = useCallback(async (path?: string) => {
+    try {
+      const file = path ?? (await api.pickModpack())
+      if (!file) return
+      const created = await api.importModpack(file)
+      await live.refreshInstances()
+      if (!settings.firstRunDone) void saveSettings({ firstRunDone: true })
+      setSelected(created.id)
+      setTab('play')
+      toast(`Importing ${created.name}. Its mods download first, then Minecraft.`)
+    } catch (e) {
+      toastError(e)
+    }
+  }, [settings.firstRunDone, saveSettings])
+
+  // .mrpack files dropped anywhere on the window are imported. Other files
+  // go to the open instance's content tab, which takes them itself.
+  useEffect(() => {
+    if (!isTauri()) return
+    let stop: (() => void) | undefined
+    let cancelled = false
+    void getCurrentWebview()
+      .onDragDropEvent((event) => {
+        if (event.payload.type !== 'drop') return
+        for (const path of event.payload.paths.filter(isModpack)) void importPack(path)
+      })
+      .then((fn) => (cancelled ? fn() : (stop = fn)))
+    return () => {
+      cancelled = true
+      stop?.()
+    }
+  }, [importPack])
+
   if (instances === null) {
     return (
       <div className="grid h-full place-items-center">
@@ -173,7 +209,7 @@ function Shell() {
                   {current ? (
                     <InstancePage instance={current} onJoin={() => setJoining(current)} onDeleted={() => setSelected(null)} />
                   ) : (
-                    <Home instances={instances} versions={versions} onOpen={openInstance} onNew={newInstance} onBrowse={() => setTab('versions')} onJoin={setJoining} />
+                    <Home instances={instances} versions={versions} onOpen={openInstance} onNew={newInstance} onImport={() => void importPack()} onBrowse={() => setTab('versions')} onJoin={setJoining} />
                   )}
                 </div>
               </>

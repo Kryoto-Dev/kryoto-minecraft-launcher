@@ -181,6 +181,8 @@ export const api = {
   modrinthSearch: (id: string, kind: ContentKind, query: string, sort: string, offset: number) =>
     call<ModrinthResult>('modrinth_search', { id, kind, query, sort, offset }),
   modrinthInstall: (id: string, kind: ContentKind, project: string, title: string) => call<string[]>('modrinth_install', { id, kind, project, title }),
+  pickModpack: () => call<string | null>('modpack_pick'),
+  importModpack: (path: string) => call<Instance>('modpack_import', { path }),
 
   probeJava: (path: string) => call<JavaInfo>('java_probe', { path }),
   mobsAvailable: () => call<MobInfo[]>('mobs_available'),

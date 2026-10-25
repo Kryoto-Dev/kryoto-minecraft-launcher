@@ -70,7 +70,7 @@ async fn install_and_play() {
         println!("   installed in {:.0?}", started.elapsed());
 
         // Mods from Modrinth, with their dependencies, for loader instances.
-        if kind == LoaderKind::Fabric {
+        if matches!(kind, LoaderKind::Fabric | LoaderKind::NeoForge) {
             let instance = instances::get(&paths, &id).unwrap();
             let task = core.tasks.start("mod", Some("test-mods"), None).unwrap();
             match modrinth::install(&paths, &instance, kryoto_mc::content::Kind::Mod, "sodium", &task).await {
@@ -121,4 +121,37 @@ async fn install_and_play() {
         }
     }
     assert!(failures.is_empty(), "\n\n{}", failures.join("\n\n"));
+}
+
+/// A real Modrinth modpack: imported as an instance, its mods downloaded and
+/// named, its configs copied in. `KRYOTO_TEST_MRPACK` is a `.mrpack` on disk;
+/// without it, Fabulously Optimized's newest pack is downloaded.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "downloads a modpack"]
+async fn import_a_modpack() {
+    let root = std::env::var("KRYOTO_TEST_ROOT").unwrap_or_else(|_| std::env::temp_dir().join("kryoto-mc-test").display().to_string());
+    let paths = Paths::new(root.into());
+    let core = Core::headless(paths.clone());
+    let file = match std::env::var("KRYOTO_TEST_MRPACK") {
+        Ok(f) => std::path::PathBuf::from(f),
+        Err(_) => {
+            let versions: serde_json::Value = kryoto_mc::net::get_json("https://api.modrinth.com/v2/project/fabulously-optimized/version").await.expect("pack versions");
+            let url = versions[0]["files"][0]["url"].as_str().expect("pack file").to_string();
+            let bytes = kryoto_mc::net::client().get(&url).send().await.expect("pack").bytes().await.expect("pack bytes");
+            let file = paths.cache().join("test-pack.mrpack");
+            std::fs::create_dir_all(paths.cache()).unwrap();
+            std::fs::write(&file, &bytes).unwrap();
+            file
+        }
+    };
+    let instance = kryoto_mc::mrpack::create(&paths, &file).await.expect("instance from the pack");
+    eprintln!("{} - {}", instance.name, instance.label());
+    kryoto_mc::mrpack::add_files(&core, &instance.id).await.expect("the pack's files");
+    let mods = kryoto_mc::content::list(&paths, &instance.id, kryoto_mc::content::Kind::Mod, &instance.game_version, &instance.version_type);
+    assert!(!mods.is_empty(), "the pack's mods are in the instance");
+    let named = mods.iter().filter(|m| m.source.is_some()).count();
+    eprintln!("{} mods, {named} known to Modrinth", mods.len());
+    assert!(named > 0, "Modrinth names the pack's mods");
+    assert!(paths.game_dir(&instance.id).join("config").exists(), "the pack's configs were copied");
+    instances::delete(&paths, &instance.id).expect("clean up");
 }

@@ -8,6 +8,7 @@ import { errorText, isTauri } from '@/lib/bridge'
 import { useTasks } from '@/lib/store'
 import { bytes } from '@/lib/units'
 import { formatLastPlayed } from '@/lib/format'
+import { isModpack } from '@/lib/modpack'
 import { cn } from '@/lib/utils'
 import { ModrinthBrowser } from './ModrinthBrowser'
 
@@ -61,9 +62,11 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
         else if (p.type === 'leave') setDropping(false)
         else if (p.type === 'drop') {
           setDropping(false)
-          if (!p.paths.length) return
+          // Modpacks become instances of their own (App takes them).
+          const files = p.paths.filter((f) => !isModpack(f))
+          if (!files.length) return
           void api
-            .importContent(instance.id, p.paths)
+            .importContent(instance.id, files)
             .then((done) => {
               toast(done.length === 1 ? `Added ${done[0]!.file}.` : `Added ${done.length} files.`)
               load()

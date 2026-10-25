@@ -136,9 +136,59 @@ async fn compatible_version(instance: &Instance, kind: Kind, project: &str) -> R
         url.query_pairs_mut().append_pair("loaders", &serde_json::to_string(&loaders).expect("serializable"));
     }
     let versions: Vec<Version> = net::get_json(url.as_str()).await?;
-    // Newest first already; a release over a beta when both fit.
-    let release = versions.iter().find(|v| v.version_type == "release").cloned();
-    Ok(release.or_else(|| versions.into_iter().next()))
+    Ok(pick(versions))
+}
+
+/// The file to install from a project's versions (newest first): the newest
+/// release or beta, an alpha only when there is nothing else. A release is
+/// not preferred over a newer beta: loaders change between their own builds
+/// (NeoForge 26.3.0.99 broke Sodium 0.9.2, the release, and not 0.9.3-beta.1),
+/// and the newer file is the one made for the loader players get today.
+fn pick(versions: Vec<Version>) -> Option<Version> {
+    let settled = versions.iter().find(|v| v.version_type != "alpha").cloned();
+    settled.or_else(|| versions.into_iter().next())
+}
+
+#[derive(Deserialize)]
+struct ProjectRow {
+    id: String,
+    title: String,
+    #[serde(default)]
+    icon_url: Option<String>,
+}
+
+/// Remember where files that came some other way (a modpack) are from on
+/// Modrinth, found by their SHA-1, so they show their names, icons and pages.
+/// Files Modrinth doesn't know are left as they are.
+pub async fn remember_by_hash(paths: &Paths, instance: &str, files: &[(Kind, String, String)]) {
+    if files.is_empty() {
+        return;
+    }
+    let hashes: Vec<&str> = files.iter().map(|(_, _, sha1)| sha1.as_str()).collect();
+    let body = serde_json::json!({ "hashes": hashes, "algorithm": "sha1" });
+    let url = format!("{API}/version_files");
+    let Ok(response) = net::client().post(&url).json(&body).send().await.and_then(|r| r.error_for_status()) else { return };
+    let Ok(versions) = response.json::<std::collections::HashMap<String, Version>>().await else { return };
+    let ids: Vec<&str> = versions.values().map(|v| v.project_id.as_str()).collect::<HashSet<_>>().into_iter().collect();
+    let mut projects_url = url::Url::parse(&format!("{API}/projects")).expect("valid url");
+    projects_url.query_pairs_mut().append_pair("ids", &serde_json::to_string(&ids).expect("serializable"));
+    let projects: Vec<ProjectRow> = net::get_json(projects_url.as_str()).await.unwrap_or_default();
+    let mut index = content::read_index(paths, instance);
+    for (kind, file, sha1) in files {
+        let Some(version) = versions.get(sha1) else { continue };
+        let Some(project) = projects.iter().find(|p| p.id == version.project_id) else { continue };
+        index.insert(
+            content::index_key(*kind, file),
+            Source {
+                project_id: version.project_id.clone(),
+                version_id: version.id.clone(),
+                title: project.title.clone(),
+                icon_url: project.icon_url.clone(),
+                version_number: Some(version.version_number.clone()),
+            },
+        );
+    }
+    let _ = content::write_index(paths, instance, &index);
 }
 
 /// Install a project (and, for mods, what it requires) into the instance.
@@ -226,4 +276,23 @@ pub async fn install(paths: &Paths, instance: &Instance, kind: Kind, project: &s
         }
     }
     Ok(installed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn version(id: &str, kind: &str) -> Version {
+        Version { id: id.into(), project_id: "p".into(), version_number: id.into(), version_type: kind.into(), files: Vec::new(), dependencies: Vec::new() }
+    }
+
+    #[test]
+    fn newest_settled_file_wins() {
+        let ids = |v: Option<Version>| v.map(|v| v.id);
+        // Sodium for NeoForge 26.3: the newer beta, not the older release.
+        assert_eq!(ids(pick(vec![version("0.9.3-beta.1", "beta"), version("0.9.3-alpha.1", "alpha"), version("0.9.2", "release")])).as_deref(), Some("0.9.3-beta.1"));
+        assert_eq!(ids(pick(vec![version("2-alpha", "alpha"), version("1", "release")])).as_deref(), Some("1"));
+        assert_eq!(ids(pick(vec![version("only-alpha", "alpha")])).as_deref(), Some("only-alpha"));
+        assert!(pick(Vec::new()).is_none());
+    }
 }
