@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3
+
+- The window shows on new Linux distros: with the .rpm on Fedora 44 and others it was
+  see-through apart from its text and buttons. Thanks to [paranoid.K//](https://kryo.to/user/paranoid.kryo.to) for reporting it.
+- The window's corners follow your corner style (sharp to pill) on Windows 10, Windows 11 and
+  Linux, and are square while maximized or full screen.
+- The folder buttons open your file manager on Linux, from the AppImage and on KDE too, where
+  they did nothing. Thanks to [paranoid.K//](https://kryo.to/user/paranoid.kryo.to) for reporting it.
+
 ## 0.1.2
 
 - Import a Modrinth modpack (`.mrpack`): Import a modpack on the home page, or drop the file

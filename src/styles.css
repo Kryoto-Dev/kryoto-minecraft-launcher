@@ -743,16 +743,15 @@ html[data-motion='reduced'] *::after {
    frame anything under it changes, and with the window full of moving art it
    was most of what made the Linux client feel slow. The panels keep their
    near-solid fill, which is what they mostly showed anyway. */
-/* Linux: the window is see-through (tauri.linux.conf.json), so the corners are
-   the page's own. Square again once it fills the screen. */
-html[data-os='linux']:not([data-frame='square']),
-html[data-os='linux']:not([data-frame='square']) body {
-  background: transparent;
-}
-html[data-os='linux']:not([data-frame='square']) #root {
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--background);
+/* Linux: the window is opaque, with square corners. It was see-through for
+   rounded corners, but WebKitGTK 2.54 (the system WebKit behind the .rpm and
+   .deb on Fedora 44 and other new distros) draws dark pixels in a see-through
+   window as clear, and the launcher vanished (kryoto-bugs KB-0006). A dark
+   color-scheme also lowers every background's alpha there, so the scheme stays
+   light on Linux; every colour, scrollbar and field here is our own. */
+:root[data-os='linux'],
+:root.dark[data-os='linux'] {
+  color-scheme: light;
 }
 html[data-os='linux'] .backdrop-blur,
 html[data-os='linux'] .backdrop-blur-sm,

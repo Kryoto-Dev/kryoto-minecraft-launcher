@@ -1,6 +1,6 @@
 [package]
 name = "kryoto-minecraft-launcher"
-version = "0.1.2"
+version = "0.1.3"
 description = "Kryoto's Minecraft Java Edition launcher."
 authors = ["Kryoto"]
 license = "MIT"
@@ -29,3 +29,9 @@ rfd = { version = "0.16", default-features = false, features = ["common-controls
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi"] }

@@ -1,8 +1,11 @@
 //! Kryoto Minecraft Launcher: the app around the `kryoto-mc` engine. The
 //! window, the commands the UI calls, events back to it, file dialogs.
 
+mod corners;
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(all(unix, not(target_os = "macos")))]
+mod linux_open;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -76,8 +79,11 @@ fn open_with_system(target: &str) -> Res<()> {
     };
     #[cfg(target_os = "macos")]
     let result = std::process::Command::new("open").arg(target).spawn();
+    // Not a bare xdg-open: from the AppImage and on KDE without qtpaths it
+    // failed silently and the folder button did nothing (kryoto-bugs KB-0005).
     #[cfg(all(unix, not(target_os = "macos")))]
-    let result = std::process::Command::new("xdg-open").arg(target).spawn();
+    return linux_open::open(target);
+    #[cfg(not(all(unix, not(target_os = "macos"))))]
     result.map(|_| ()).map_err(|e| e.to_string())
 }
 
@@ -519,6 +525,9 @@ pub fn run() {
             app.manage(App { core });
             // The page shows the window once it has drawn (no white flash); if
             // it never gets that far, the window still appears.
+            if let Some(window) = handle.get_webview_window("main") {
+                corners::round(&window);
+            }
             let window_handle = handle.clone();
             std::thread::spawn(move || {
                 std::thread::sleep(std::time::Duration::from_secs(5));
@@ -530,7 +539,13 @@ pub fn run() {
             });
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if let (tauri::WindowEvent::Resized(_), Some(main)) = (event, window.app_handle().get_webview_window(window.label())) {
+                corners::refresh(&main);
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            corners::window_corners,
             app_info,
             settings_get,
             settings_set,
