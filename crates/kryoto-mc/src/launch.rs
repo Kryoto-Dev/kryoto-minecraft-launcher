@@ -99,14 +99,17 @@ pub fn command_line(paths: &Paths, prepared: &Prepared, game_dir: &Path, natives
     let fill = |s: &str| substitute(s, &vars);
 
     let mut args: Vec<String> = vec![format!("-Xmx{}M", settings.memory_mb), format!("-Xms{}M", settings.memory_mb.min(1024))];
+    let typed = split_args(settings.jvm_args);
     // The official launcher's garbage collector settings: shorter pauses.
+    // Java refuses to start with two collectors, so a player who picked one
+    // (`-XX:+UseZGC`) gets theirs alone.
     if prepared.java_major >= 8 {
-        args.extend(
-            ["-XX:+UnlockExperimentalVMOptions", "-XX:+UseG1GC", "-XX:G1NewSizePercent=20", "-XX:G1ReservePercent=20", "-XX:MaxGCPauseMillis=50", "-XX:G1HeapRegionSize=32M"]
-                .map(String::from),
-        );
+        args.push("-XX:+UnlockExperimentalVMOptions".into());
+        if !typed.iter().any(|a| picks_collector(a)) {
+            args.extend(["-XX:+UseG1GC", "-XX:G1NewSizePercent=20", "-XX:G1ReservePercent=20", "-XX:MaxGCPauseMillis=50", "-XX:G1HeapRegionSize=32M"].map(String::from));
+        }
     }
-    args.extend(split_args(settings.jvm_args));
+    args.extend(typed);
 
     match json.arguments.as_ref().filter(|a| !a.jvm.is_empty()) {
         Some(arguments) => args.extend(evaluate(&arguments.jvm, &features).iter().map(|a| fill(a))),
@@ -154,9 +157,12 @@ pub fn command_line(paths: &Paths, prepared: &Prepared, game_dir: &Path, natives
     }
     args.extend(game);
 
+    // The class path is hundreds of files: the log names how many, so the
+    // lines that matter aren't buried under it.
+    let full_classpath = &vars["classpath"];
     let shown = std::iter::once(prepared.java.display().to_string())
         .chain(args.iter().cloned())
-        .map(|a| if a.contains(' ') { format!("\"{a}\"") } else { a })
+        .map(|a| if a == *full_classpath { format!("<{} files>", classpath.len()) } else if a.contains(' ') { format!("\"{a}\"") } else { a })
         .collect::<Vec<_>>()
         .join(" ");
     CommandLine { java: prepared.java.clone(), args, shown }
@@ -204,6 +210,12 @@ pub fn substitute(s: &str, vars: &HashMap<&str, String>) -> String {
     }
     out.push_str(rest);
     out
+}
+
+/// `-XX:+UseZGC`, `-XX:+UseShenandoahGC` and the like: an argument that
+/// picks Java's garbage collector.
+fn picks_collector(arg: &str) -> bool {
+    arg.starts_with("-XX:+Use") && arg.ends_with("GC")
 }
 
 /// Split a line of arguments a player typed, honouring double quotes.
@@ -565,6 +577,23 @@ pub fn explain_exit(code: Option<i32>, log: &[LogLine], crash_report: bool) -> S
     if has("Could not reserve enough space") || has("Invalid maximum heap size") || has("Initial heap size set to a larger value") {
         return "Java couldn't get the memory it was asked for. Lower the memory for this instance in its settings.".into();
     }
+    // Java stopped before the game began: an argument the player typed.
+    const WHERE: &str = "the Java arguments in this instance's settings, or in Settings for every instance";
+    if has("Multiple garbage collectors selected") {
+        return format!("Java was given two garbage collectors. Keep one -XX:+Use...GC in {WHERE}.");
+    }
+    let unknown = regex::Regex::new(r"Unrecognized VM option '([^']+)'|Unrecognized option: (\S+)")
+        .ok()
+        .and_then(|re| re.captures(&tail).and_then(|c| c.get(1).or_else(|| c.get(2)).map(|m| m.as_str().to_string())));
+    if let Some(option) = unknown {
+        return format!("This Java doesn't know the argument \"{option}\". Remove it from {WHERE}.");
+    }
+    if has("must be enabled via -XX:+UnlockDiagnosticVMOptions") {
+        return format!("One of the Java arguments needs -XX:+UnlockDiagnosticVMOptions in front of it, in {WHERE}.");
+    }
+    if has("Error occurred during initialization of VM") || has("Could not create the Java Virtual Machine") {
+        return format!("Java wouldn't start with these settings. The last lines of the log say which one; fix or remove it in {WHERE}.");
+    }
     if has("java.lang.OutOfMemoryError") {
         return "Minecraft ran out of memory. Give this instance more memory in its settings.".into();
     }
@@ -596,7 +625,7 @@ pub fn explain_exit(code: Option<i32>, log: &[LogLine], crash_report: bool) -> S
     }
     let report = if crash_report { " A crash report was saved; open it from the log." } else { "" };
     match code {
-        Some(code) => format!("Minecraft closed with an error (exit code {code}). The log above says why.{report}"),
+        Some(code) => format!("Minecraft closed with an error (exit code {code}). The last lines of the log say why.{report}"),
         None => format!("Minecraft was stopped by the system.{report}"),
     }
 }
@@ -641,5 +670,19 @@ mod tests {
         assert!(explain_exit(Some(-1), &[], true).contains("crash report"));
         let mixin = line("Caused by: org.spongepowered.asm.mixin.throwables.MixinApplyError: Mixin [sodium-neoforge.mixins.json:platform.neoforge.LevelExtractorMixin from mod sodium] from phase [DEFAULT] in config [sodium-neoforge.mixins.json] FAILED during APPLY");
         assert!(explain_exit(Some(1), &[mixin], true).contains("\"sodium\""));
+        let vm = |s: &str| explain_exit(Some(1), &[line("Error occurred during initialization of VM"), line(s)], false);
+        assert!(vm("Multiple garbage collectors selected").contains("two garbage collectors"));
+        assert!(explain_exit(Some(1), &[line("Unrecognized VM option 'UseCompactObjectHeaderz'"), line("Error: Could not create the Java Virtual Machine.")], false).contains("\"UseCompactObjectHeaderz\""));
+        assert!(vm("Something else").contains("Java wouldn't start"));
+        assert!(!explain_exit(Some(1), &[], false).contains("above"));
+    }
+
+    #[test]
+    fn a_chosen_collector_replaces_the_default() {
+        assert!(picks_collector("-XX:+UseZGC"));
+        assert!(picks_collector("-XX:+UseShenandoahGC"));
+        assert!(!picks_collector("-XX:+UseCompactObjectHeaders"));
+        assert!(!picks_collector("-XX:+UseStringDeduplication"));
+        assert!(!picks_collector("-XX:-UseG1GC"));
     }
 }

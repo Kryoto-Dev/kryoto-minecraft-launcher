@@ -76,7 +76,7 @@ export function InstanceSettings({ instance, onDeleted }: { instance: Instance; 
           ) : null}
         </Section>
 
-        <Section title="Java arguments" hint="For players who know what they need. Memory is set above; leave this empty otherwise.">
+        <Section title="Java arguments" hint="For players who know what they need. Memory is set above; leave this empty otherwise. A garbage collector you pick (-XX:+UseZGC) replaces the launcher's own.">
           <input
             defaultValue={o.jvmArgs ?? ''}
             placeholder={settings.jvmArgs || '-XX:+UseZGC'}
@@ -188,7 +188,7 @@ function LoaderSection({ instance, running }: { instance: Instance; running: boo
         error ? (
           <p className="text-[11px] text-destructive">{error}</p>
         ) : unavailable ? (
-          <p className="text-[11px] text-muted-foreground">There's no {LOADERS.find((l) => l.kind === kind)?.label} for Minecraft {instance.gameVersion}.</p>
+          <p className="text-[11px] text-muted-foreground">There's no {LOADERS.find((l) => l.kind === kind)?.label} for Minecraft {instance.gameVersion} that the launcher can install.</p>
         ) : versions ? (
           <div className="flex items-center gap-2">
             <Caption>Version</Caption>

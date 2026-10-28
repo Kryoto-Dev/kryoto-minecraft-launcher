@@ -23,7 +23,19 @@ const SECTIONS: { id: Section; label: string; modded?: boolean }[] = [
   { id: 'settings', label: 'Settings' },
 ]
 
-export function InstancePage({ instance, onJoin, onDeleted }: { instance: Instance; onJoin: () => void; onDeleted: () => void }) {
+export function InstancePage({
+  instance,
+  showLog,
+  onLogShown,
+  onJoin,
+  onDeleted,
+}: {
+  instance: Instance
+  showLog: boolean
+  onLogShown: () => void
+  onJoin: () => void
+  onDeleted: () => void
+}) {
   const modded = instance.loader.kind !== 'vanilla'
   const [section, setSection] = useState<Section>(modded ? 'mod' : 'resourcepack')
   const games = useGames()
@@ -32,11 +44,16 @@ export function InstancePage({ instance, onJoin, onDeleted }: { instance: Instan
   // A new instance's block fills in with its download.
   const filling = task && !instance.installed ? (taskFraction(task) ?? 0) : null
 
-  // A crash or a start jumps to the log, where the reason is.
+  useEffect(() => setSection(instance.loader.kind !== 'vanilla' ? 'mod' : 'resourcepack'), [instance.id, instance.loader.kind])
+  // A crash jumps to the log, where the reason is; so does "Show the log".
   useEffect(() => {
     if (game?.exit?.hint) setSection('log')
   }, [game?.exit])
-  useEffect(() => setSection(instance.loader.kind !== 'vanilla' ? 'mod' : 'resourcepack'), [instance.id, instance.loader.kind])
+  useEffect(() => {
+    if (!showLog) return
+    setSection('log')
+    onLogShown()
+  }, [showLog, onLogShown])
 
   return (
     <div className="flex h-full min-h-0 flex-col">

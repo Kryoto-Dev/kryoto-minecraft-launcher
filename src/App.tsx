@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { Plus } from 'lucide-react'
 import { Busy, Button } from '@/ui'
@@ -7,7 +7,7 @@ import { api, type AppInfo, type GameState, type Instance, type Settings, type V
 import { App as AppCtx, useApp } from '@/lib/app-context'
 import { errorText, isTauri, on } from '@/lib/bridge'
 import { applyLook } from '@/lib/look'
-import { isModpack } from '@/lib/modpack'
+import { splitModpacks } from '@/lib/modpack'
 import { live, startLive, useInstances, useTasks } from '@/lib/store'
 import { minimizeWindow, showWindow } from '@/lib/window'
 import { ProfileDialog, ProfileMenu } from '@/profiles/Profiles'
@@ -85,6 +85,8 @@ export default function App() {
 function Shell() {
   const [tab, setTab] = useState<Tab>('play')
   const [selected, setSelected] = useState<string | null>(null)
+  // An instance whose page should open on its log (from a "stopped" toast).
+  const [showLog, setShowLog] = useState<string | null>(null)
   const [addingProfile, setAddingProfile] = useState(false)
   // A game asked to start with no profile yet: what to run once there is one.
   const [firstProfile, setFirstProfile] = useState<{ then: () => void } | null>(null)
@@ -109,19 +111,37 @@ function Shell() {
   }, [])
   useEffect(() => loadVersions(false), [loadVersions])
 
-  // Minimize while playing, if asked to.
+  // Minimize while playing, if asked to; say so when a game stops badly.
+  // One listener for the app's life: the instance list changes as a game
+  // stops, and listening again then could show the same stop twice.
+  const latest = useRef({ afterLaunch: settings.afterLaunch, instances })
+  latest.current = { afterLaunch: settings.afterLaunch, instances }
   useEffect(() => {
     let stop: (() => void) | undefined
     let cancelled = false
     void on<GameState>('game-state', (s) => {
-      if (s.running && settings.afterLaunch === 'minimize') void minimizeWindow()
-      if (!s.running && s.exit?.hint) toast(`${instances?.find((i) => i.id === s.instance)?.name ?? 'Minecraft'} stopped. ${s.exit.hint}`, 'error')
+      const { afterLaunch, instances } = latest.current
+      if (s.running && afterLaunch === 'minimize') void minimizeWindow()
+      if (!s.running && s.exit?.hint) {
+        const name = instances?.find((i) => i.id === s.instance)?.name ?? 'Minecraft'
+        toast(`${name} stopped. ${s.exit.hint}`, 'error', {
+          key: `stopped-${s.instance}`,
+          action: {
+            label: 'Show the log',
+            run: () => {
+              setSelected(s.instance)
+              setTab('play')
+              setShowLog(s.instance)
+            },
+          },
+        })
+      }
     }).then((fn) => (cancelled ? fn() : (stop = fn)))
     return () => {
       cancelled = true
       stop?.()
     }
-  }, [settings.afterLaunch, instances])
+  }, [])
 
   const current = instances?.find((i) => i.id === selected) ?? null
   const openInstance = (id: string) => {
@@ -147,8 +167,8 @@ function Shell() {
     }
   }, [settings.firstRunDone, saveSettings])
 
-  // .mrpack files dropped anywhere on the window are imported. Other files
-  // go to the open instance's content tab, which takes them itself.
+  // Modpacks dropped anywhere on the window are imported. Other files go to
+  // the open instance's content tab, which takes them itself.
   useEffect(() => {
     if (!isTauri()) return
     let stop: (() => void) | undefined
@@ -156,7 +176,7 @@ function Shell() {
     void getCurrentWebview()
       .onDragDropEvent((event) => {
         if (event.payload.type !== 'drop') return
-        for (const path of event.payload.paths.filter(isModpack)) void importPack(path)
+        void splitModpacks(event.payload.paths).then(({ packs }) => packs.forEach((path) => void importPack(path)))
       })
       .then((fn) => (cancelled ? fn() : (stop = fn)))
     return () => {
@@ -207,7 +227,7 @@ function Shell() {
                 <Sidebar instances={instances} selected={current?.id ?? null} onSelect={setSelected} onNew={() => newInstance()} />
                 <div key={current?.id ?? 'home'} className="kryo-fade min-w-0 grow">
                   {current ? (
-                    <InstancePage instance={current} onJoin={() => setJoining(current)} onDeleted={() => setSelected(null)} />
+                    <InstancePage instance={current} showLog={showLog === current.id} onLogShown={() => setShowLog(null)} onJoin={() => setJoining(current)} onDeleted={() => setSelected(null)} />
                   ) : (
                     <Home instances={instances} versions={versions} onOpen={openInstance} onNew={newInstance} onImport={() => void importPack()} onBrowse={() => setTab('versions')} onJoin={setJoining} />
                   )}

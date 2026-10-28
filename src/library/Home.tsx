@@ -50,7 +50,7 @@ export function Home({
               <PackageOpen className="size-4" /> Import a modpack
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">Got a .mrpack from a friend or a server? Import it, or drop it on this window.</p>
+          <p className="text-[11px] text-muted-foreground">Got a modpack from a friend or a server? Import it, or drop it on this window.</p>
         </div>
       </div>
     )
@@ -118,7 +118,7 @@ export function Home({
           <Button onClick={onBrowse}>
             <Layers className="size-3.5" /> All versions
           </Button>
-          <Button onClick={onImport} title="A Modrinth modpack (.mrpack), with its mods and configs. You can also drop one on this window.">
+          <Button onClick={onImport} title="A Modrinth (.mrpack) or CurseForge (.zip) modpack, with its mods and configs. You can also drop one on this window.">
             <PackageOpen className="size-3.5" /> Import a modpack
           </Button>
         </div>

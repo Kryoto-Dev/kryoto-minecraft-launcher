@@ -66,18 +66,24 @@ async fn fabric_like(base: &str, game: &str) -> Result<Vec<LoaderVersion>, Strin
         Err(e) if e.contains("400") || e.contains("404") => Vec::new(),
         Err(e) => return Err(e),
     };
-    let mut first_stable = true;
-    Ok(entries
+    // Quilt lists its loaders in no particular order (0.20.0-beta.9 first,
+    // 0.24.0 sixth), so the newest is found by sorting, not by position.
+    let mut out: Vec<LoaderVersion> = entries
         .into_iter()
         .map(|e| {
-            let stable = e.loader.stable.unwrap_or(!e.loader.version.contains("beta") && !e.loader.version.contains("pre"));
-            let recommended = stable && first_stable;
-            if recommended {
-                first_stable = false;
-            }
-            LoaderVersion { label: e.loader.version.clone(), version: e.loader.version, stable, recommended }
+            let stable = e.loader.stable.unwrap_or(!is_prerelease(&e.loader.version));
+            LoaderVersion { label: e.loader.version.clone(), version: e.loader.version, stable, recommended: false }
         })
-        .collect())
+        .collect();
+    out.sort_by(|a, b| version_cmp(&b.label, &a.label));
+    if let Some(first) = out.iter_mut().find(|v| v.stable) {
+        first.recommended = true;
+    }
+    Ok(out)
+}
+
+fn is_prerelease(version: &str) -> bool {
+    ["alpha", "beta", "pre", "rc"].iter().any(|tag| version.contains(tag))
 }
 
 fn url_part(s: &str) -> String {
@@ -107,7 +113,29 @@ async fn cached_text(paths: &Paths, name: &str, url: &str) -> Result<String, Str
     }
 }
 
+/// Forge before Minecraft 1.5.2 came as zips to copy into the game jar, with
+/// no installer; up to 1.6.4 some builds still lack one.
+fn forge_installers(game: &str) -> Option<bool> {
+    let mut numbers = game.split('.').map(|p| p.parse::<u32>().ok());
+    let (Some(Some(1)), Some(Some(minor))) = (numbers.next(), numbers.next()) else { return Some(true) };
+    let patch = numbers.next().flatten().unwrap_or(0);
+    match (minor, patch) {
+        (0..=4, _) | (5, 0..=1) => None,
+        (5, _) | (6, _) => Some(false),
+        _ => Some(true),
+    }
+}
+
+/// Whether a Forge build has an installer, from the file list Forge's site
+/// keeps for each build. A list that can't be read counts as yes.
+async fn forge_build_has_installer(paths: &Paths, version: String) -> Option<String> {
+    let url = format!("https://files.minecraftforge.net/net/minecraftforge/forge/{version}/meta.json");
+    let meta: serde_json::Value = cached_text(paths, &format!("forge-meta-{version}.json"), &url).await.ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+    meta.get("classifiers").is_none_or(|c| c.get("installer").is_some()).then_some(version)
+}
+
 async fn forge_versions(paths: &Paths, game: &str) -> Result<Vec<LoaderVersion>, String> {
+    let Some(every_build) = forge_installers(game) else { return Ok(Vec::new()) };
     let xml = cached_text(paths, "forge-maven-metadata.xml", "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml").await?;
     let promos: serde_json::Value = cached_text(paths, "forge-promotions.json", "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json")
         .await
@@ -126,6 +154,17 @@ async fn forge_versions(paths: &Paths, game: &str) -> Result<Vec<LoaderVersion>,
             LoaderVersion { recommended: recommended.as_deref() == Some(short.as_str()), label: short, version: v, stable: true }
         })
         .collect();
+    if !every_build {
+        use futures_util::StreamExt;
+        let builds: Vec<String> = out.iter().map(|v| v.version.clone()).collect();
+        let with_installer: std::collections::HashSet<String> = futures_util::stream::iter(builds)
+            .map(|build| forge_build_has_installer(paths, build))
+            .buffer_unordered(8)
+            .filter_map(|v| async move { v })
+            .collect()
+            .await;
+        out.retain(|v| with_installer.contains(&v.version));
+    }
     out.sort_by(|a, b| version_cmp(&b.label, &a.label));
     Ok(out)
 }
@@ -175,10 +214,36 @@ async fn neoforge_versions(paths: &Paths, game: &str) -> Result<Vec<LoaderVersio
     Ok(out)
 }
 
-/// Numeric-aware ordering for dotted versions.
+/// Whether loader version `a` is the same as or newer than `b`.
+pub fn newer_or_same(a: &str, b: &str) -> bool {
+    version_cmp(a, b) != std::cmp::Ordering::Less
+}
+
+/// Numeric-aware ordering for dotted versions, where a pre-release comes
+/// before its release (`0.30.0-beta.8` < `0.30.0`) and `+build` breaks ties.
 fn version_cmp(a: &str, b: &str) -> std::cmp::Ordering {
-    let parts = |s: &str| s.split(['.', '-']).map(|p| p.parse::<u64>().unwrap_or(0)).collect::<Vec<_>>();
-    parts(a).cmp(&parts(b))
+    use std::cmp::Ordering;
+    // Numbers compare as numbers, words as words, and a number before a word.
+    fn parts(s: &str) -> Vec<Result<u64, &str>> {
+        s.split(['.', '-']).filter(|p| !p.is_empty()).map(|p| p.parse::<u64>().map_err(|_| p)).collect()
+    }
+    let pieces = |s: &str| {
+        let (main, build) = s.split_once('+').unwrap_or((s, ""));
+        let (release, pre) = main.split_once('-').unwrap_or((main, ""));
+        (release.to_string(), pre.to_string(), build.to_string())
+    };
+    let (ra, pa, ba) = pieces(a);
+    let (rb, pb, bb) = pieces(b);
+    let release = |s: &str| s.split('.').map(|p| p.parse::<u64>().unwrap_or(0)).collect::<Vec<_>>();
+    release(&ra)
+        .cmp(&release(&rb))
+        .then_with(|| match (pa.is_empty(), pb.is_empty()) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            (false, false) => parts(&pa).cmp(&parts(&pb)),
+        })
+        .then_with(|| parts(&ba).cmp(&parts(&bb)))
 }
 
 /* ── Installing ─────────────────────────────────────────── */
@@ -222,7 +287,13 @@ async fn run_installer(paths: &Paths, name: &str, game: &str, url: &str, java: &
     let installer = paths.cache().join("installers").join(&file_name);
     download::download_all(vec![FileJob { url: url.into(), path: installer.clone(), sha1: None, size: None }], Verify::Size, task, parallel)
         .await
-        .map_err(|e| if e.contains("404") { format!("{name} has no installer for this version, so it can't be installed automatically.") } else { e })?;
+        .map_err(|e| {
+            if e.contains("404") {
+                format!("This {name} build for Minecraft {game} was never released with an installer, so the launcher can't set it up. Pick another {name} version, or another loader, in the instance's settings.")
+            } else {
+                e
+            }
+        })?;
 
     let (profile, version_json) = read_installer(&installer)?;
     // Oldest format: the version file is inside install_profile.json.
@@ -393,5 +464,23 @@ mod tests {
         let mut v = vec!["47.1.9", "47.1.10", "47.2.0"];
         v.sort_by(|a, b| version_cmp(b, a));
         assert_eq!(v, ["47.2.0", "47.1.10", "47.1.9"]);
+        // Quilt's list for 26.3, in the order its server gives it.
+        let mut q = vec!["0.20.0-beta.9", "0.24.0", "0.30.0-beta.8", "0.30.0-beta.10", "0.29.2", "0.30.0", "0.31.0-beta.4"];
+        q.sort_by(|a, b| version_cmp(b, a));
+        assert_eq!(q, ["0.31.0-beta.4", "0.30.0", "0.30.0-beta.10", "0.30.0-beta.8", "0.29.2", "0.24.0", "0.20.0-beta.9"]);
+        let mut f = vec!["0.4.0+build.105", "0.4.0+build.106", "0.3.7"];
+        f.sort_by(|a, b| version_cmp(b, a));
+        assert_eq!(f, ["0.4.0+build.106", "0.4.0+build.105", "0.3.7"]);
+    }
+
+    #[test]
+    fn forge_before_its_installer() {
+        assert_eq!(forge_installers("1.1"), None);
+        assert_eq!(forge_installers("1.4.7"), None);
+        assert_eq!(forge_installers("1.5.1"), None);
+        assert_eq!(forge_installers("1.5.2"), Some(false));
+        assert_eq!(forge_installers("1.6.4"), Some(false));
+        assert_eq!(forge_installers("1.7.10"), Some(true));
+        assert_eq!(forge_installers("26.3"), Some(true));
     }
 }

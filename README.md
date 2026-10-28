@@ -3,14 +3,15 @@
 # Kryoto Minecraft Launcher
 
 Install and play any Minecraft: Java Edition version, from today's release back to the first
-alpha, with Fabric, Quilt, Forge or NeoForge, and mods and packs from Modrinth. Pick a name and
-play: singleplayer, LAN and offline-mode servers, no account needed. Windows and Linux.
+alpha, with Fabric, Quilt, Forge or NeoForge, and mods and packs from Modrinth and CurseForge.
+Pick a name and play: singleplayer, LAN and offline-mode servers, no account needed. Windows
+and Linux.
 
 **Kryoto** · Tauri 2 (Rust) + React · MIT · [Download](https://github.com/Kryoto-Dev/kryoto-minecraft-launcher/releases/latest) · [All repos](https://github.com/Kryoto-Dev)
 
 The installer holds no Mojang files. Minecraft and the Java it runs on download from Mojang's
 own servers when a player installs a version; loaders come from their makers, mods and packs
-from Modrinth.
+from Modrinth and CurseForge.
 
 ![The launcher's home: the instance to continue, recent ones, and baby mobs walking along the bottom](docs/screenshots/home.webp)
 
@@ -26,8 +27,9 @@ Pick Vanilla, Fabric, Quilt, Forge or NeoForge and the loader version, and it do
 
 ![New instance: Minecraft version, mod loader and its version, name and icon](docs/screenshots/new-instance.webp)
 
-**Mods, resource packs and shaders from Modrinth.** Only what fits the instance's version and
-loader is shown; the mods a mod needs come with it. Drop your own files on the window, turn mods
+**Mods, resource packs and shaders from Modrinth and CurseForge.** Only what fits the instance's
+version and loader is shown; the mods a mod needs come with it. Modrinth (`.mrpack`) and
+CurseForge (`.zip`) modpacks import as instances. Drop your own files on the window, turn mods
 on and off.
 
 ![Modrinth search inside an instance, showing mods for Fabric 26.3](docs/screenshots/modrinth.webp)

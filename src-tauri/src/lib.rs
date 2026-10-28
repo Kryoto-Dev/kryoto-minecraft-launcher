@@ -17,7 +17,7 @@ use kryoto_mc::content::{self, Kind};
 use kryoto_mc::core::Core;
 use kryoto_mc::instances::{self, Instance, LaunchOverrides, Loader};
 use kryoto_mc::paths::Paths;
-use kryoto_mc::{auth, java, launch, loaders, logging, meta, mobs, modrinth, mrpack, settings, tasks};
+use kryoto_mc::{auth, curseforge, java, launch, loaders, logging, meta, mobs, modrinth, mrpack, settings, tasks};
 
 struct App {
     core: Core,
@@ -408,16 +408,57 @@ async fn modrinth_install(app: State<'_, App>, id: String, kind: String, project
     result
 }
 
-/// A Modrinth modpack, picked with the system's dialog.
-#[tauri::command(async)]
-fn modpack_pick() -> Option<String> {
-    rfd::FileDialog::new().add_filter("Modrinth modpack", &["mrpack"]).set_title("Import a modpack").pick_file().map(|p| p.display().to_string())
+/// Whether this build can reach CurseForge (its API needs a key).
+#[tauri::command]
+fn curseforge_available() -> bool {
+    curseforge::available()
 }
 
-/// Make an instance from a `.mrpack`, then download its mods and install it.
+#[tauri::command]
+async fn curseforge_search(app: State<'_, App>, id: String, kind: String, query: String, sort: String, offset: u32) -> Res<modrinth::SearchResult> {
+    let instance = instances::get(&app.core.paths, &id)?;
+    curseforge::search(&instance, Kind::parse(&kind)?, &query, &sort, offset).await
+}
+
+#[tauri::command]
+async fn curseforge_install(app: State<'_, App>, id: String, kind: String, project: String, title: String) -> Res<Vec<String>> {
+    let core = &app.core;
+    let instance = instances::get(&core.paths, &id)?;
+    let task = core.tasks.start(
+        &format!("Adding {title}"),
+        Some(&id),
+        Some(serde_json::json!({ "command": "curseforge_install", "args": { "id": id, "kind": kind, "project": project, "title": title } })),
+    )?;
+    let result = curseforge::install(&core.paths, &instance, Kind::parse(&kind)?, &project, &task).await;
+    task.finish(&result.as_ref().map(|_| ()).map_err(Clone::clone));
+    result
+}
+
+/// A modpack, picked with the system's dialog: Modrinth's `.mrpack`, and
+/// CurseForge's `.zip` when this build can reach CurseForge.
+#[tauri::command(async)]
+fn modpack_pick() -> Option<String> {
+    let mut dialog = rfd::FileDialog::new().set_title("Import a modpack");
+    dialog = if curseforge::available() {
+        dialog.add_filter("Modpack", &["mrpack", "zip"]).add_filter("Modrinth modpack", &["mrpack"]).add_filter("CurseForge modpack", &["zip"])
+    } else {
+        dialog.add_filter("Modrinth modpack", &["mrpack"])
+    };
+    dialog.pick_file().map(|p| p.display().to_string())
+}
+
+/// Whether a dropped file is a modpack rather than content for an instance.
+#[tauri::command(async)]
+fn modpack_check(path: String) -> bool {
+    let file = std::path::Path::new(&path);
+    file.extension().is_some_and(|e| e.eq_ignore_ascii_case("mrpack")) || curseforge::is_pack(file)
+}
+
+/// Make an instance from a modpack, then download its mods and install it.
 #[tauri::command]
 async fn modpack_import(app: State<'_, App>, path: String) -> Res<Instance> {
-    let created = mrpack::create(&app.core.paths, std::path::Path::new(&path)).await?;
+    let file = std::path::Path::new(&path);
+    let created = if curseforge::is_pack(file) { curseforge::create(&app.core.paths, file).await? } else { mrpack::create(&app.core.paths, file).await? };
     let core = app.core.clone();
     let id = created.id.clone();
     tauri::async_runtime::spawn(async move { add_pack_files(&core, &id).await });
@@ -433,7 +474,8 @@ async fn modpack_files(app: State<'_, App>, id: String) -> Res<()> {
 }
 
 async fn add_pack_files(core: &Core, id: &str) {
-    let result = match mrpack::add_files(core, id).await {
+    let added = if curseforge::has_pack(&core.paths, id) { curseforge::add_files(core, id).await } else { mrpack::add_files(core, id).await };
+    let result = match added {
         Ok(()) => core.install(id, false).await.map(|_| ()),
         Err(e) => Err(e),
     };
@@ -580,7 +622,11 @@ pub fn run() {
             content_pick,
             modrinth_search,
             modrinth_install,
+            curseforge_available,
+            curseforge_search,
+            curseforge_install,
             modpack_pick,
+            modpack_check,
             modpack_import,
             modpack_files,
             java_probe,

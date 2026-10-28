@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.4
+
+- CurseForge: browse and add mods, resource packs and shader packs from CurseForge beside
+  Modrinth, with the mods they require, and import CurseForge modpacks (`.zip`) from Import a
+  modpack or by dropping them on the window. A file whose author only allows downloads on
+  CurseForge's own site comes from Modrinth when Modrinth has the very same file; otherwise
+  it is named with its page, to fetch there and drop in. Thanks to HallowMarch for asking.
+- Java arguments that pick a garbage collector (`-XX:+UseZGC`, the field's own example) start
+  the game: the launcher's G1 settings stood beside them and Java refused to start ("Multiple
+  garbage collectors selected").
+- When Java won't start with the Java arguments, the reason says which argument and where to
+  change it, and a stop no longer says "the log above" when the log is below.
+- A game that stops badly shows one notice, not two, with Show the log to open its log.
+- The command line in the log names how many class path files there are instead of listing
+  hundreds of them over the lines that say what went wrong.
+- Quilt offers its newest loader: its list came in no order, so 26.3 was offered 0.24.0
+  instead of 0.30.1.
+- Forge is only offered where it has an installer: Minecraft 1.1 to 1.5.1, and some 1.5.2 to
+  1.6.4 builds, ended in "Forge has no installer for this version".
+- Each loader says what it is for when creating an instance.
+
 ## 0.1.3
 
 - The window shows on new Linux distros: with the .rpm on Fedora 44 and others it was

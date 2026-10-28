@@ -52,6 +52,9 @@ pub struct Hit {
     pub categories: Vec<String>,
     #[serde(default)]
     pub date_modified: String,
+    /// The project's page, when it isn't modrinth.com/project/<slug>.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -185,10 +188,30 @@ pub async fn remember_by_hash(paths: &Paths, instance: &str, files: &[(Kind, Str
                 title: project.title.clone(),
                 icon_url: project.icon_url.clone(),
                 version_number: Some(version.version_number.clone()),
+                site: None,
             },
         );
     }
     let _ = content::write_index(paths, instance, &index);
+}
+
+/// Where Modrinth has the very same files (same SHA-1): hash to download
+/// link. For CurseForge files whose authors block other launchers' downloads
+/// but publish the same jar on Modrinth too.
+pub async fn same_files(sha1s: &[String]) -> std::collections::HashMap<String, String> {
+    let mut found = std::collections::HashMap::new();
+    if sha1s.is_empty() {
+        return found;
+    }
+    let body = serde_json::json!({ "hashes": sha1s, "algorithm": "sha1" });
+    let Ok(response) = net::client().post(format!("{API}/version_files")).json(&body).send().await.and_then(|r| r.error_for_status()) else { return found };
+    let Ok(versions) = response.json::<std::collections::HashMap<String, Version>>().await else { return found };
+    for (sha1, version) in versions {
+        if let Some(file) = version.files.iter().find(|f| f.hashes.sha1.as_deref().is_some_and(|h| h.eq_ignore_ascii_case(&sha1))) {
+            found.insert(sha1.to_lowercase(), file.url.clone());
+        }
+    }
+    found
 }
 
 /// Install a project (and, for mods, what it requires) into the instance.
@@ -259,6 +282,7 @@ pub async fn install(paths: &Paths, instance: &Instance, kind: Kind, project: &s
                 title: info.title.clone(),
                 icon_url: info.icon_url.clone(),
                 version_number: Some(version.version_number.clone()),
+                site: None,
             },
         )?;
         installed.push(info.title);

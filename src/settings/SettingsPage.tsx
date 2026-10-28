@@ -66,7 +66,7 @@ function GamePane() {
           <Check checked={settings.fullscreen} onChange={(f) => void saveSettings({ fullscreen: f })} label="Full screen" />
         </div>
       </Section>
-      <Section title="Java arguments" hint="Added to every start. Leave empty unless you know you need something.">
+      <Section title="Java arguments" hint="Added to every start. Leave empty unless you know you need something. A garbage collector you pick (-XX:+UseZGC) replaces the launcher's own.">
         <input
           defaultValue={settings.jvmArgs}
           spellCheck={false}

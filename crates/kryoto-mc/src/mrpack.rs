@@ -75,7 +75,7 @@ impl IndexFile {
 
 /// A path from a pack, relative to the game folder, or `None` when it would
 /// land anywhere else (`..`, an absolute path, a drive letter).
-fn inside(relative: &str) -> Option<PathBuf> {
+pub(crate) fn inside(relative: &str) -> Option<PathBuf> {
     let path = Path::new(relative);
     let mut out = PathBuf::new();
     for part in path.components() {
@@ -131,6 +131,14 @@ fn loader_of(dependencies: &HashMap<String, String>) -> (LoaderKind, Option<Stri
 pub async fn create(paths: &Paths, file: &Path) -> Result<Instance, String> {
     let index = read(file)?;
     let game = index.dependencies.get("minecraft").cloned().ok_or("The modpack doesn't say which Minecraft it's for.")?;
+    let (kind, wanted) = loader_of(&index.dependencies);
+    make_instance(paths, &index.name, &game, kind, wanted, file, KEPT).await
+}
+
+/// The instance for a pack (Modrinth's or CurseForge's), with a copy of the
+/// pack kept beside it as `kept`.
+pub(crate) async fn make_instance(paths: &Paths, name: &str, game: &str, kind: LoaderKind, wanted: Option<String>, file: &Path, kept: &str) -> Result<Instance, String> {
+    let game = game.to_string();
     let manifest = meta::manifest(paths, false).await?;
     let version_type = manifest
         .versions
@@ -138,7 +146,6 @@ pub async fn create(paths: &Paths, file: &Path) -> Result<Instance, String> {
         .find(|v| v.id == game)
         .map(|v| v.kind.clone())
         .ok_or_else(|| format!("The modpack is for Minecraft {game}, which isn't in Mojang's version list."))?;
-    let (kind, wanted) = loader_of(&index.dependencies);
     // Forge's installers are named by their full maven version
     // (`1.20.1-47.2.0`); packs give the short one.
     let version = match (&kind, wanted) {
@@ -149,8 +156,8 @@ pub async fn create(paths: &Paths, file: &Path) -> Result<Instance, String> {
         }
         (_, v) => v,
     };
-    let instance = instances::create(paths, &index.name, &game, &version_type, Loader { kind, version }, None)?;
-    if let Err(e) = std::fs::copy(file, paths.instance(&instance.id).join(KEPT)) {
+    let instance = instances::create(paths, name, &game, &version_type, Loader { kind, version }, None)?;
+    if let Err(e) = std::fs::copy(file, paths.instance(&instance.id).join(kept)) {
         let _ = instances::delete(paths, &instance.id);
         return Err(format!("Couldn't keep a copy of the modpack: {e}"));
     }
@@ -191,7 +198,7 @@ async fn add_files_in(core: &Core, instance: &Instance, task: &crate::tasks::Tas
 
     task.stage("Settings and configs");
     let dir = game_dir.clone();
-    tokio::task::spawn_blocking(move || copy_overrides(&pack, &dir)).await.map_err(|e| e.to_string())??;
+    tokio::task::spawn_blocking(move || copy_overrides(&pack, &dir, &["overrides", "client-overrides"])).await.map_err(|e| e.to_string())??;
 
     // So the mods show their Modrinth names and icons. Best effort: the pack
     // is complete without it.
@@ -213,11 +220,12 @@ async fn add_files_in(core: &Core, instance: &Instance, task: &crate::tasks::Tas
     Ok(())
 }
 
-/// `overrides/`, then `client-overrides/` over it, into the game folder.
-fn copy_overrides(pack: &Path, game_dir: &Path) -> Result<(), String> {
+/// The pack's folders (`overrides/`, then `client-overrides/` over it) into
+/// the game folder.
+pub(crate) fn copy_overrides(pack: &Path, game_dir: &Path, prefixes: &[&str]) -> Result<(), String> {
     let file = std::fs::File::open(pack).map_err(|e| e.to_string())?;
     let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
-    for prefix in ["overrides", "client-overrides"] {
+    for prefix in prefixes {
         for i in 0..zip.len() {
             let mut entry = zip.by_index(i).map_err(|e| e.to_string())?;
             let Some(name) = entry.enclosed_name() else { continue };
@@ -292,7 +300,7 @@ mod tests {
         assert_eq!(index.files.iter().filter(|f| f.for_client()).count(), 1);
 
         let out = std::env::temp_dir().join(format!("kryoto-mrpack-out-{}", std::process::id()));
-        copy_overrides(&path, &out).unwrap();
+        copy_overrides(&path, &out, &["overrides", "client-overrides"]).unwrap();
         assert_eq!(std::fs::read_to_string(out.join("config").join("sodium.json")).unwrap(), "{}");
         assert_eq!(std::fs::read_to_string(out.join("options.txt")).unwrap(), "fov:1");
         let _ = std::fs::remove_dir_all(&out);

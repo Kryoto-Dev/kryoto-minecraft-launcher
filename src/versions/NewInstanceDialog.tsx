@@ -105,11 +105,11 @@ export function NewInstanceDialog({ versions, initial, onClose, onCreated }: { v
             ))}
           </div>
           {loader === 'vanilla' ? (
-            <p className="text-[11px] text-muted-foreground">The game as Mojang made it. Resource packs work; mods need a loader. You can add one later.</p>
+            <p className="text-[11px] text-muted-foreground">{LOADERS[0]!.about}</p>
           ) : loaderError ? (
             <p className="text-[11px] text-destructive">{loaderError}</p>
           ) : noLoader ? (
-            <p className="text-[11px] text-muted-foreground">There's no {LOADERS.find((l) => l.kind === loader)?.label} for Minecraft {game}. Pick another loader or version.</p>
+            <p className="text-[11px] text-muted-foreground">There's no {LOADERS.find((l) => l.kind === loader)?.label} for Minecraft {game} that the launcher can install. Pick another loader or version.</p>
           ) : loaderVersions ? (
             <div className="flex items-center gap-2">
               <Dropdown
@@ -120,7 +120,7 @@ export function NewInstanceDialog({ versions, initial, onClose, onCreated }: { v
                 label="Loader version"
                 options={loaderVersions.slice(0, 60).map((v) => ({ value: v.version, label: v.label, hint: v.recommended ? 'Recommended' : v.stable ? undefined : 'Beta' }))}
               />
-              <span className="text-[11px] text-muted-foreground">{loader === 'fabric' || loader === 'quilt' ? 'Light, fast, most new mods.' : 'The big classic mods and packs.'}</span>
+              <span className="text-[11px] text-muted-foreground">{LOADERS.find((l) => l.kind === loader)?.about}</span>
             </div>
           ) : (
             <Caption>Looking up versions</Caption>

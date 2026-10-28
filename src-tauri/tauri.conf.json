@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Kryoto Minecraft Launcher",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "identifier": "to.kryo.minecraft",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -56,7 +56,7 @@
     "category": "Game",
     "copyright": "Kryoto",
     "shortDescription": "Minecraft Java Edition, every version, from Kryoto",
-    "longDescription": "Kryoto Minecraft Launcher: install and play any Minecraft Java Edition version, with Fabric, Quilt, Forge and NeoForge, mods and resource packs from Modrinth, and profiles to play under. Game files come from Mojang; nothing proprietary ships in the installer."
+    "longDescription": "Kryoto Minecraft Launcher: install and play any Minecraft Java Edition version, with Fabric, Quilt, Forge and NeoForge, mods and resource packs from Modrinth and CurseForge, and profiles to play under. Game files come from Mojang; nothing proprietary ships in the installer."
   },
   "plugins": {
     "updater": {

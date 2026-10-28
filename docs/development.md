@@ -107,10 +107,22 @@ KRYOTO_TEST_GAMES="latest vanilla; 1.21.1 fabric; 1.21.1 neoforge; 1.12.2 forge;
 ```
 
 The Fabric entry also adds Sodium from Modrinth with its dependencies.
+`KRYOTO_TEST_JVM_ARGS="-XX:+UseZGC"` gives every instance those Java arguments.
+
+The same file has two quicker ones: `loader_lists` (the Fabric, Quilt, Forge and NeoForge
+lists players pick from) and `curseforge_for_real` (a search, a mod with what it requires,
+and a CurseForge modpack imported), which needs `KRYOTO_CURSEFORGE_KEY`.
+
+## CurseForge
+
+CurseForge's API needs a key from console.curseforge.com. Release builds read it from the
+repository secret `CURSEFORGE_API_KEY` at compile time; when developing, set
+`KRYOTO_CURSEFORGE_KEY` in the environment the app or tests run in. Never commit it. A build
+without a key offers Modrinth only.
 
 ## Releasing
 
-See the README. The updater's key pair is the launcher's own: the private key goes in the
+See the README, and set `CURSEFORGE_API_KEY` (above). The updater's key pair is the launcher's own: the private key goes in the
 repository secret `TAURI_SIGNING_PRIVATE_KEY` (its password, if any, in
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`), the public half is `plugins.updater.pubkey` in
 `tauri.conf.json`. Losing the private key means installed copies can't update past that point.

@@ -3,14 +3,15 @@ import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { Compass, FilePlus2, FolderOpen, Puzzle, Search, Trash2 } from 'lucide-react'
 import { Busy, Button, Check, IconButton, Modal } from '@/ui'
 import { toast, toastError } from '@/ui/Toasts'
-import { api, loaderLabel, type ContentItem, type ContentKind, type Instance } from '@/lib/api'
+import { api, loaderLabel, type ContentItem, type ContentKind, type Instance, type Site } from '@/lib/api'
 import { errorText, isTauri } from '@/lib/bridge'
 import { useTasks } from '@/lib/store'
 import { bytes } from '@/lib/units'
 import { formatLastPlayed } from '@/lib/format'
-import { isModpack } from '@/lib/modpack'
+import { useCurseForge } from '@/lib/curseforge'
+import { splitModpacks } from '@/lib/modpack'
 import { cn } from '@/lib/utils'
-import { ModrinthBrowser } from './ModrinthBrowser'
+import { ContentBrowser } from './ContentBrowser'
 
 const WORDS: Record<ContentKind, { one: string; many: string; folder: string }> = {
   mod: { one: 'mod', many: 'mods', folder: 'mods' },
@@ -23,7 +24,8 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
   const [items, setItems] = useState<ContentItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [browsing, setBrowsing] = useState(false)
+  const [browsing, setBrowsing] = useState<Site | null>(null)
+  const curseforge = useCurseForge()
   const [confirm, setConfirm] = useState<ContentItem | null>(null)
   const [dropping, setDropping] = useState(false)
   const tasks = useTasks()
@@ -44,7 +46,7 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
   }, [instance.id, kind])
   useEffect(load, [load])
 
-  // Reload when a Modrinth job for this instance ends.
+  // Reload when a Modrinth or CurseForge job for this instance ends.
   const finished = tasks.filter((t) => t.instance === instance.id && t.state === 'done').length
   useEffect(() => {
     if (finished) load()
@@ -63,11 +65,10 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
         else if (p.type === 'drop') {
           setDropping(false)
           // Modpacks become instances of their own (App takes them).
-          const files = p.paths.filter((f) => !isModpack(f))
-          if (!files.length) return
-          void api
-            .importContent(instance.id, files)
+          void splitModpacks(p.paths)
+            .then(({ other }) => (other.length ? api.importContent(instance.id, other) : null))
             .then((done) => {
+              if (!done) return
               toast(done.length === 1 ? `Added ${done[0]!.file}.` : `Added ${done.length} files.`)
               load()
             })
@@ -121,7 +122,12 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
               <Button disabled={needsLoader} onClick={() => void api.pickContent(instance.id, kind).then((d) => d.length && load()).catch(toastError)}>
                 <FilePlus2 className="size-3.5" /> Add files
               </Button>
-              <Button variant="primary" disabled={needsLoader} onClick={() => setBrowsing(true)}>
+              {curseforge ? (
+                <Button disabled={needsLoader} onClick={() => setBrowsing('curseforge')}>
+                  <Compass className="size-3.5" /> Browse CurseForge
+                </Button>
+              ) : null}
+              <Button variant="primary" disabled={needsLoader} onClick={() => setBrowsing('modrinth')}>
                 <Compass className="size-3.5" /> Browse Modrinth
               </Button>
             </>
@@ -192,7 +198,7 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
         {kind === 'resourcepack' && items?.length ? <p className="pt-4 text-[11px] text-muted-foreground">Turn packs on in game: Options, Resource Packs.</p> : null}
       </div>
 
-      {browsing ? <ModrinthBrowser instance={instance} kind={kind} installed={items ?? []} onClose={() => setBrowsing(false)} /> : null}
+      {browsing ? <ContentBrowser site={browsing} instance={instance} kind={kind} installed={items ?? []} onClose={() => setBrowsing(null)} /> : null}
       {confirm ? (
         <Modal
           title={`Delete ${words.one}`}

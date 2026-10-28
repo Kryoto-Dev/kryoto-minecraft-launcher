@@ -102,7 +102,9 @@ export type Exit = { code: number | null; seconds: number; hint: string | null; 
 export type GameState = { instance: string; running: boolean; started: number | null; pid: number | null; exit: Exit | null }
 
 export type ContentKind = 'mod' | 'resourcepack' | 'shaderpack' | 'world'
-export type ContentSource = { projectId: string; versionId: string; title: string; iconUrl: string | null; versionNumber: string | null }
+/** Where added content comes from. Modrinth's sources carry no `site`. */
+export type Site = 'modrinth' | 'curseforge'
+export type ContentSource = { projectId: string; versionId: string; title: string; iconUrl: string | null; versionNumber: string | null; site?: 'curseforge' }
 export type ContentItem = {
   file: string
   kind: ContentKind
@@ -127,6 +129,8 @@ export type ModrinthHit = {
   author: string
   categories: string[]
   date_modified: string
+  /** The page, when it isn't modrinth.com/project/<slug> (CurseForge's). */
+  url?: string
 }
 export type ModrinthResult = { hits: ModrinthHit[]; offset: number; limit: number; total_hits: number }
 
@@ -181,7 +185,12 @@ export const api = {
   modrinthSearch: (id: string, kind: ContentKind, query: string, sort: string, offset: number) =>
     call<ModrinthResult>('modrinth_search', { id, kind, query, sort, offset }),
   modrinthInstall: (id: string, kind: ContentKind, project: string, title: string) => call<string[]>('modrinth_install', { id, kind, project, title }),
+  curseforgeAvailable: () => call<boolean>('curseforge_available'),
+  curseforgeSearch: (id: string, kind: ContentKind, query: string, sort: string, offset: number) =>
+    call<ModrinthResult>('curseforge_search', { id, kind, query, sort, offset }),
+  curseforgeInstall: (id: string, kind: ContentKind, project: string, title: string) => call<string[]>('curseforge_install', { id, kind, project, title }),
   pickModpack: () => call<string | null>('modpack_pick'),
+  isModpack: (path: string) => call<boolean>('modpack_check', { path }),
   importModpack: (path: string) => call<Instance>('modpack_import', { path }),
 
   probeJava: (path: string) => call<JavaInfo>('java_probe', { path }),
@@ -196,12 +205,12 @@ export function retryTask(task: Task) {
   return call(task.retry.command, task.retry.args)
 }
 
-export const LOADERS: { kind: LoaderKind; label: string }[] = [
-  { kind: 'vanilla', label: 'Vanilla' },
-  { kind: 'fabric', label: 'Fabric' },
-  { kind: 'quilt', label: 'Quilt' },
-  { kind: 'forge', label: 'Forge' },
-  { kind: 'neoforge', label: 'NeoForge' },
+export const LOADERS: { kind: LoaderKind; label: string; about: string }[] = [
+  { kind: 'vanilla', label: 'Vanilla', about: 'The game as Mojang made it. Resource packs work; mods need a loader. You can add one later.' },
+  { kind: 'fabric', label: 'Fabric', about: 'Light and first on new versions: performance mods and most new mods.' },
+  { kind: 'quilt', label: 'Quilt', about: 'A fork of Fabric that also runs most Fabric mods.' },
+  { kind: 'forge', label: 'Forge', about: 'The original loader: the big mods and packs up to 1.20.1.' },
+  { kind: 'neoforge', label: 'NeoForge', about: "Forge's successor: the big mods and packs from 1.20.2 on." },
 ]
 
 export const loaderLabel = (kind: LoaderKind) => LOADERS.find((l) => l.kind === kind)?.label ?? kind

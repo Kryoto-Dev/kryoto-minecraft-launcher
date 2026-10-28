@@ -235,13 +235,18 @@ export async function previewCall<T>(command: string, args: Record<string, unkno
     case 'content_pick':
     case 'content_import':
       return r([])
+    case 'curseforge_available':
+      return r(true)
+    case 'modpack_check':
+      return r(String(args.path).toLowerCase().endsWith('.mrpack'))
     case 'modrinth_search':
+    case 'curseforge_search':
       return r({
         hits: ['Sodium', 'Iris Shaders', 'Lithium', 'Mod Menu', 'Fabric API', 'Xaero\'s Minimap'].map((title, i) => ({
           project_id: `p${i}`,
           slug: title.toLowerCase().replace(/\W+/g, '-'),
           title,
-          description: 'A sample result in the browser preview. In the app these come from Modrinth.',
+          description: `A sample result in the browser preview. In the app these come from ${command === 'curseforge_search' ? 'CurseForge' : 'Modrinth'}.`,
           icon_url: null,
           downloads: 90_000_000 / (i + 1),
           author: 'someone',
@@ -253,6 +258,7 @@ export async function previewCall<T>(command: string, args: Record<string, unkno
         total_hits: 6,
       })
     case 'modrinth_install':
+    case 'curseforge_install':
       await new Promise((r2) => setTimeout(r2, 900))
       return r([args.title])
     case 'modpack_pick':

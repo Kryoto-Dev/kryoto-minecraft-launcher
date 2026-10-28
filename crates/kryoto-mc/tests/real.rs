@@ -12,7 +12,8 @@
 //! `KRYOTO_TEST_ROOT` is the data folder (it keeps what it downloaded, so a
 //! second run is quick). Each entry of `KRYOTO_TEST_GAMES` is a Minecraft
 //! version and a loader (vanilla, fabric, quilt, forge, neoforge), optionally
-//! with the loader version after it.
+//! with the loader version after it. `KRYOTO_TEST_JVM_ARGS` gives every
+//! instance those Java arguments, as a player would type them.
 
 use std::time::{Duration, Instant};
 
@@ -20,7 +21,7 @@ use kryoto_mc::core::Core;
 use kryoto_mc::instances::{self, Loader, LoaderKind};
 use kryoto_mc::launch::Extras;
 use kryoto_mc::paths::Paths;
-use kryoto_mc::{auth, meta, modrinth};
+use kryoto_mc::{auth, curseforge, meta, modrinth};
 
 fn loader(name: &str) -> LoaderKind {
     match name {
@@ -61,6 +62,11 @@ async fn install_and_play() {
                     .id
             }
         };
+        if let Ok(args) = std::env::var("KRYOTO_TEST_JVM_ARGS") {
+            let mut i = instances::get(&paths, &id).unwrap();
+            i.overrides.jvm_args = Some(args).filter(|a| !a.is_empty());
+            instances::save(&paths, &i).unwrap();
+        }
         println!("\n== {entry}: installing");
         let started = Instant::now();
         if let Err(e) = core.install(&id, false).await {
@@ -154,4 +160,88 @@ async fn import_a_modpack() {
     assert!(named > 0, "Modrinth names the pack's mods");
     assert!(paths.game_dir(&instance.id).join("config").exists(), "the pack's configs were copied");
     instances::delete(&paths, &instance.id).expect("clean up");
+}
+
+/// CurseForge, for real: a search, a mod with the mod it requires, and a
+/// modpack imported as an instance with its files and configs. Needs a key in
+/// `KRYOTO_CURSEFORGE_KEY`; `KRYOTO_TEST_CFPACK` is a pack `.zip` on disk,
+/// without it Fabulously Optimized's newest CurseForge pack is downloaded.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "talks to CurseForge"]
+async fn curseforge_for_real() {
+    assert!(curseforge::available(), "KRYOTO_CURSEFORGE_KEY is set");
+    let root = std::env::var("KRYOTO_TEST_ROOT").unwrap_or_else(|_| std::env::temp_dir().join("kryoto-mc-test").display().to_string());
+    let paths = Paths::new(root.into());
+    let core = Core::headless(paths.clone());
+    use kryoto_mc::content::{self, Kind};
+
+    let instance = instances::create(&paths, "test curseforge", "1.21.1", "release", Loader { kind: LoaderKind::Fabric, version: Some("0.16.10".into()) }, None).expect("instance");
+    let found = curseforge::search(&instance, Kind::Mod, "mod menu", "relevance", 0).await.expect("search");
+    eprintln!("search: {} results, first {:?}", found.total_hits, found.hits.first().map(|h| &h.title));
+    let mod_menu = found.hits.iter().find(|h| h.title == "Mod Menu").expect("Mod Menu is found");
+    let task = core.tasks.start("cf mod", Some("test-cf"), None).unwrap();
+    let titles = curseforge::install(&paths, &instance, Kind::Mod, &mod_menu.project_id, &task).await.expect("Mod Menu installs");
+    task.finish(&Ok(()));
+    eprintln!("added: {}", titles.join(", "));
+    assert!(titles.iter().any(|t| t.contains("Fabric API")), "Fabric API came with it");
+    let mods = content::list(&paths, &instance.id, Kind::Mod, &instance.game_version, &instance.version_type);
+    assert_eq!(mods.iter().filter(|m| m.source.as_ref().is_some_and(|s| s.site.as_deref() == Some("curseforge"))).count(), titles.len());
+    let packs = curseforge::search(&instance, Kind::ResourcePack, "", "downloads", 0).await.expect("pack search");
+    assert!(!packs.hits.is_empty(), "resource packs are found");
+    instances::delete(&paths, &instance.id).expect("clean up");
+
+    let file = match std::env::var("KRYOTO_TEST_CFPACK") {
+        Ok(f) => std::path::PathBuf::from(f),
+        Err(_) => {
+            let key = std::env::var("KRYOTO_CURSEFORGE_KEY").unwrap();
+            let files: serde_json::Value = kryoto_mc::net::client()
+                .get("https://api.curseforge.com/v1/mods/396246/files?pageSize=1")
+                .header("x-api-key", key)
+                .send()
+                .await
+                .expect("pack files")
+                .json()
+                .await
+                .expect("pack files json");
+            let url = files["data"][0]["downloadUrl"].as_str().expect("pack download").to_string();
+            let bytes = kryoto_mc::net::client().get(&url).send().await.expect("pack").bytes().await.expect("pack bytes");
+            let file = paths.cache().join("test-pack.zip");
+            std::fs::create_dir_all(paths.cache()).unwrap();
+            std::fs::write(&file, &bytes).unwrap();
+            file
+        }
+    };
+    assert!(curseforge::is_pack(&file));
+    let instance = curseforge::create(&paths, &file).await.expect("instance from the pack");
+    eprintln!("pack: {} - {}", instance.name, instance.label());
+    curseforge::add_files(&core, &instance.id).await.expect("the pack's files");
+    let mods = content::list(&paths, &instance.id, Kind::Mod, &instance.game_version, &instance.version_type);
+    eprintln!("{} mods, {} named", mods.len(), mods.iter().filter(|m| m.source.is_some()).count());
+    assert!(mods.len() > 5, "the pack's mods are in the instance");
+    assert!(mods.iter().all(|m| m.source.is_some()), "every mod is named from CurseForge");
+    assert!(paths.game_dir(&instance.id).join("config").exists(), "the pack's configs were copied");
+    instances::delete(&paths, &instance.id).expect("clean up");
+}
+
+/// The loader lists players pick from, as the makers serve them today.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "asks the loaders' servers"]
+async fn loader_lists() {
+    let root = std::env::var("KRYOTO_TEST_ROOT").unwrap_or_else(|_| std::env::temp_dir().join("kryoto-mc-test").display().to_string());
+    let paths = Paths::new(root.into());
+    let list = |kind: LoaderKind, game: &'static str| {
+        let paths = paths.clone();
+        async move { kryoto_mc::loaders::versions(&paths, &kind, game).await.expect("loader list") }
+    };
+    let quilt = list(LoaderKind::Quilt, "26.3").await;
+    let recommended = quilt.iter().find(|v| v.recommended).expect("a recommended Quilt");
+    eprintln!("Quilt 26.3: first {}, recommended {}", quilt[0].label, recommended.label);
+    assert!(quilt.iter().filter(|v| v.stable).all(|v| !recommended.label.is_empty() && kryoto_mc::loaders::newer_or_same(&recommended.label, &v.label)), "the recommended Quilt is the newest stable one");
+    assert!(list(LoaderKind::Forge, "1.1").await.is_empty(), "no Forge without an installer");
+    let forge_161 = list(LoaderKind::Forge, "1.6.1").await;
+    eprintln!("Forge 1.6.1: {} builds with installers", forge_161.len());
+    assert!(!forge_161.iter().any(|v| v.version == "1.6.1-8.9.0.749"), "a 1.6.1 build without an installer is left out");
+    assert!(forge_161.iter().any(|v| v.version == "1.6.1-8.9.0.775"));
+    assert!(!list(LoaderKind::Forge, "1.20.1").await.is_empty());
+    assert!(list(LoaderKind::NeoForge, "26.3").await.iter().any(|v| v.recommended));
 }

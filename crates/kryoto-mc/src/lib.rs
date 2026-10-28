@@ -8,8 +8,8 @@
 //! | `java` | Mojang's Java runtimes, and probing a player's own Java |
 //! | `loaders` | Fabric, Quilt, Forge, NeoForge |
 //! | `instances`, `content` | instances and what is in their game folders |
-//! | `modrinth` | finding and installing mods and packs |
-//! | `mrpack` | importing Modrinth modpacks (`.mrpack`) as instances |
+//! | `modrinth`, `curseforge` | finding and installing mods and packs |
+//! | `mrpack`, `curseforge` | importing modpacks (`.mrpack`, CurseForge `.zip`) as instances |
 //! | `mobs` | baby mobs for the window, read from an installed game |
 //! | `auth` | profiles: the names players play under |
 //! | `launch`, `core` | the command line, the running game, its log |
@@ -18,6 +18,7 @@
 pub mod auth;
 pub mod content;
 pub mod core;
+pub mod curseforge;
 pub mod download;
 pub mod install;
 pub mod instances;

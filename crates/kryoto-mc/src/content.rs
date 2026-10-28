@@ -2,7 +2,7 @@
 //! and worlds, read from the files themselves.
 //!
 //! Turning a mod off renames it to `.disabled`, the convention every loader
-//! and launcher understands. Files added from Modrinth are remembered in
+//! and launcher understands. Files added from Modrinth or CurseForge are remembered in
 //! `content.json` beside the instance, so their pages, icons and
 //! dependencies are known; files dropped in by hand are listed all the same.
 
@@ -65,6 +65,9 @@ pub struct Source {
     pub icon_url: Option<String>,
     #[serde(default)]
     pub version_number: Option<String>,
+    /// `curseforge` for files from CurseForge; Modrinth's have none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub site: Option<String>,
 }
 
 /// `content.json`: file name (in its folder) to where it came from.

@@ -14,6 +14,10 @@ name: Release
 # TAURI_SIGNING_PRIVATE_KEY secret (and _PASSWORD), the launcher's own key,
 # whose public half is plugins.updater.pubkey in tauri.conf.json. Only then is
 # the release published.
+#
+# The CURSEFORGE_API_KEY secret (from console.curseforge.com) is built into the
+# app for CurseForge browsing and modpacks; without it the app offers Modrinth
+# only.
 on:
   push:
     branches: [main]
@@ -120,6 +124,14 @@ jobs:
             echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set: without it there is no latest.json and no installed copy ever updates."
             exit 1
           fi
+      - name: Note a missing CurseForge key
+        shell: bash
+        env:
+          KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::warning::CURSEFORGE_API_KEY is not set: this build offers Modrinth only."
+          fi
       - run: pnpm install --frozen-lockfile
       # PowerShell on Windows: in a bash step Git's MSYS `link` shadows MSVC's.
       - name: Check (Windows)
@@ -141,6 +153,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
         # `tauri build` only warns when the key doesn't match the public key,
         # and every installed copy would then refuse the update. Fail instead.
         run: |
@@ -155,6 +168,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: '1'
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
         run: |
           set -o pipefail
           pnpm app:build 2>&1 | tee build.log
