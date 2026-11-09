@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
-import { Compass, FilePlus2, FolderOpen, Puzzle, Search, Trash2 } from 'lucide-react'
+import { Compass, FilePlus2, FolderOpen, Puzzle, Search, Trash2 } from '@/ui/pixel-icons'
 import { Busy, Button, Check, IconButton, Modal } from '@/ui'
 import { toast, toastError } from '@/ui/Toasts'
 import { api, loaderLabel, type ContentItem, type ContentKind, type Instance, type Site } from '@/lib/api'
@@ -46,8 +46,9 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
   }, [instance.id, kind])
   useEffect(load, [load])
 
-  // Reload when a Modrinth or CurseForge job for this instance ends.
-  const finished = tasks.filter((t) => t.instance === instance.id && t.state === 'done').length
+  // Reload when a Modrinth or CurseForge job for this instance ends, however:
+  // one that failed on a required mod has already added the mod asked for.
+  const finished = tasks.filter((t) => t.instance === instance.id && t.state !== 'running').length
   useEffect(() => {
     if (finished) load()
   }, [finished, load])
@@ -158,8 +159,8 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
               kind === 'world'
                 ? 'Worlds you make in this instance show up here.'
                 : kind === 'shaderpack'
-                  ? 'Shader packs need a shader mod (Iris or Oculus) in Mods. Browse Modrinth, or drop .zip files on this window.'
-                  : `Browse Modrinth for ${words.many} that fit ${vanilla ? 'Minecraft' : loaderLabel(instance.loader.kind)} ${instance.gameVersion}, or drop files on this window.`
+                  ? 'Shader packs need a shader mod (Iris or Oculus) in Mods. Browse for one, or drop .zip files on this window.'
+                  : `Browse for ${words.many} that fit ${vanilla ? 'Minecraft' : loaderLabel(instance.loader.kind)} ${instance.gameVersion}, or drop files on this window.`
             }
           />
         ) : (
@@ -167,7 +168,7 @@ export function ContentTab({ instance, kind }: { instance: Instance; kind: Conte
             {shown.map((item) => (
               <li key={item.file} className={cn('kryo-radius group flex items-center gap-3 border border-transparent px-3 py-2 transition-colors hover:border-border hover:bg-card', !item.enabled && 'opacity-55')}>
                 {item.icon ? (
-                  <img src={item.icon} alt="" className="kryo-square size-9 shrink-0 rounded-[4px] object-cover [image-rendering:pixelated]" />
+                  <img src={item.icon} alt="" className="size-9 shrink-0 object-cover [image-rendering:pixelated]" style={{ borderRadius: 'min(var(--kryo-radius), 4px)' }} />
                 ) : (
                   <span className="kryo-radius grid size-9 shrink-0 place-items-center bg-secondary text-muted-foreground">
                     <Puzzle className="size-4" />

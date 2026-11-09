@@ -1,7 +1,7 @@
 {
   "name": "kryoto-minecraft-launcher",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "MIT",
   "type": "module",
   "description": "Kryoto's Minecraft Java Edition launcher: every version, mod loaders, mods and packs, and baby mobs.",
@@ -13,6 +13,8 @@
     "app:build:local": "node scripts/build.mjs --local",
     "brand": "node --experimental-strip-types scripts/brand.mjs",
     "check:shared": "node scripts/shared.mjs check",
+    "check:styles": "node scripts/check-styles.mjs",
+    "check": "node scripts/check-styles.mjs && tsc --noEmit",
     "sync:shared": "node scripts/shared.mjs sync"
   },
   "dependencies": {

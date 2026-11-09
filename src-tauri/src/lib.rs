@@ -236,6 +236,7 @@ fn instance_update(app: State<App>, id: String, patch: InstancePatch) -> Res<Ins
             if app.core.games.running(&id) {
                 return Err("Close the game before changing its mod loader.".into());
             }
+            app.core.idle(&id)?;
             instance.loader = loader;
             instance.launch_version = None;
             instance.installed = false;
@@ -250,6 +251,7 @@ fn instance_delete(app: State<App>, id: String) -> Res<()> {
     if app.core.games.running(&id) {
         return Err("Close the game before deleting its instance.".into());
     }
+    app.core.idle(&id)?;
     instances::delete(&app.core.paths, &id)
 }
 

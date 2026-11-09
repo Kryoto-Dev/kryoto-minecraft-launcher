@@ -49,7 +49,7 @@ impl Core {
 
     /// Refuse a second job on an instance while one runs: two jobs writing
     /// the same files would trip over each other.
-    fn idle(&self, id: &str) -> Result<(), String> {
+    pub fn idle(&self, id: &str) -> Result<(), String> {
         match self.tasks.running_for(id) {
             Some(title) => Err(format!("Wait for \"{title}\" to finish first.")),
             None => Ok(()),
@@ -107,9 +107,16 @@ impl Core {
             instance.launch_version = Some(launch_id.clone());
             install::prepare(&self.paths, &launch_id, options(chosen), task).await?
         };
-        instance.installed = true;
-        instances::save(&self.paths, &instance)?;
-        Ok((instance, prepared))
+        // Only what this job found out: a long install must not undo a rename
+        // or a memory change made while it ran. An instance deleted meanwhile
+        // stays deleted.
+        let mut current = instances::get(&self.paths, id)?;
+        current.version_type = instance.version_type;
+        current.loader.version = instance.loader.version;
+        current.launch_version = instance.launch_version;
+        current.installed = true;
+        instances::save(&self.paths, &current)?;
+        Ok((current, prepared))
     }
 
     /// Check the files, sign in, and start the game.

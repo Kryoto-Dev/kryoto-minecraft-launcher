@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowUpRight, FolderOpen, Trash2, UserRound } from 'lucide-react'
+import { ArrowUpRight, FolderOpen, Trash2, UserRound } from '@/ui/pixel-icons'
 import { Button, Caption, Check, Dropdown, Section, Segmented, inputCls } from '@/ui'
 import { KryoMark } from '@/ui/ascii/KryoMark'
 import { JavaPicker, MemorySlider, NumberField } from '@/ui/Controls'
@@ -12,6 +12,7 @@ import { openExternal } from '@/lib/window'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/profiles/Profiles'
 import { UpdateCheck } from '@/shell/UpdatePrompt'
+import { setIconStyle, storedIconStyle } from '@/ui/pixel-icons-motion'
 
 type Pane = 'game' | 'profiles' | 'look' | 'about'
 
@@ -136,6 +137,7 @@ function ProfilesPane({ onAddProfile }: { onAddProfile: () => void }) {
 }
 
 function LookPane() {
+  const [icons, setIcons] = useState<'pixel' | 'classic'>(storedIconStyle)
   const { settings, saveSettings } = useApp()
   return (
     <>
@@ -153,6 +155,19 @@ function LookPane() {
       </Section>
       <Section title="Type">
         <Segmented value={settings.font} onChange={(v) => void saveSettings({ font: v })} options={FONTS} />
+      </Section>
+      <Section title="Icons" hint="Classic line icons, if the pixel ones are harder to read.">
+        <Segmented
+          value={icons}
+          onChange={(v) => {
+            setIcons(v)
+            setIconStyle(v)
+          }}
+          options={[
+            { value: 'pixel', label: 'Pixel' },
+            { value: 'classic', label: 'Classic' },
+          ]}
+        />
       </Section>
       <Section
         title="Baby mobs"
@@ -207,7 +222,7 @@ function AboutPane() {
       </Section>
       <Section title="Where things come from">
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Minecraft and its Java runtimes download from Mojang's own servers; this installer contains none of Mojang's files. Fabric, Quilt, Forge and NeoForge come from their makers, mods and packs from Modrinth.
+          Minecraft and its Java runtimes download from Mojang's own servers; this installer contains none of Mojang's files. Fabric, Quilt, Forge and NeoForge come from their makers, mods and packs from Modrinth and CurseForge.
         </p>
         <p className="text-[11px] leading-relaxed text-muted-foreground">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</p>
         <div className="flex flex-wrap gap-2">

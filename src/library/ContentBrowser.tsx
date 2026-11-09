@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, Check as CheckIcon, Download, Search } from 'lucide-react'
+import { ArrowUpRight, Check as CheckIcon, Download, Search } from '@/ui/pixel-icons'
 import { Busy, Button, Dropdown, Modal } from '@/ui'
 import { toast, toastError } from '@/ui/Toasts'
 import { api, loaderLabel, type ContentItem, type ContentKind, type Instance, type ModrinthHit, type Site } from '@/lib/api'
@@ -64,7 +64,10 @@ export function ContentBrowser({ site, instance, kind, installed, onClose }: { s
       setTotal(r.total_hits)
       setError(null)
     } catch (e) {
-      if (n === seq.current) setError(errorText(e))
+      if (n !== seq.current) return
+      // A failed "More results" leaves what is already listed.
+      if (offset === 0) setError(errorText(e))
+      else toastError(e)
     }
   }
   useEffect(() => {
@@ -103,9 +106,12 @@ export function ContentBrowser({ site, instance, kind, installed, onClose }: { s
         </div>
         <div className="-mx-1 min-h-0 overflow-y-auto px-1">
           {error ? (
-            <p role="alert" className="py-6 text-xs text-destructive">
-              {error}
-            </p>
+            <div role="alert" className="grid justify-items-start gap-3 py-6">
+              <p className="text-xs text-destructive">{error}</p>
+              <Button size="sm" onClick={() => search(0)}>
+                Try again
+              </Button>
+            </div>
           ) : !hits ? (
             <div className="grid place-items-center py-16">
               <Busy className="size-5" />
@@ -122,7 +128,7 @@ export function ContentBrowser({ site, instance, kind, installed, onClose }: { s
                 return (
                   <li key={hit.project_id} className="kryo-radius flex items-center gap-3 border border-transparent px-3 py-2.5 transition-colors hover:border-border hover:bg-background/60">
                     {hit.icon_url ? (
-                      <img src={hit.icon_url} alt="" loading="lazy" className="kryo-square size-11 shrink-0 rounded-[6px] object-cover" />
+                      <img src={hit.icon_url} alt="" loading="lazy" className="size-11 shrink-0 object-cover" style={{ borderRadius: 'min(var(--kryo-radius), 6px)' }} />
                     ) : (
                       <span className="kryo-radius size-11 shrink-0 bg-secondary" />
                     )}
@@ -147,9 +153,9 @@ export function ContentBrowser({ site, instance, kind, installed, onClose }: { s
               })}
             </ul>
           )}
-          {hits && hits.length < total ? (
+          {hits && !error && hits.length < total ? (
             <div className="flex justify-center py-4">
-              <Button size="sm" onClick={() => void search(hits.length)}>
+              <Button size="sm" onClick={() => search(hits.length)}>
                 More results
               </Button>
             </div>

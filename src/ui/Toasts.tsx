@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@/ui/pixel-icons'
 import { errorText } from '@/lib/bridge'
 import { cn } from '@/lib/utils'
 

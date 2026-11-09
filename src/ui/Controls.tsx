@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Coffee, FolderSearch } from 'lucide-react'
+import { Coffee, FolderSearch } from '@/ui/pixel-icons'
 import { Button, Caption, Segmented, inputCls } from '@/ui'
 import { api, type JavaInfo } from '@/lib/api'
 import { errorText } from '@/lib/bridge'
@@ -66,7 +66,7 @@ export function JavaPicker({ value, onChange, needs }: { value: string | null; o
         <div className="grid gap-2">
           <div className="flex gap-2">
             <input value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => draft.trim() && draft !== value && onChange(draft.trim())} className={inputCls} spellCheck={false} />
-            <Button onClick={() => void api.pickJava().then((p) => p && onChange(p))}>
+            <Button onClick={() => api.pickJava().then((p) => p && onChange(p))}>
               <FolderSearch className="size-3.5" /> Browse
             </Button>
           </div>

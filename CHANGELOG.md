@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.5
+
+- The list of instances has no second New instance button, and Home no second way to Versions: both are on the bar above.
+- About says mods and packs also come from CurseForge.
+- A long install no longer undoes what you changed while it ran: a new name, memory or Java setting stays.
+- Delete, Repair and changing the mod loader wait for a running job, so a deleted instance can't come back when its download ends.
+- In an instance's settings, going from one mod loader to another and back keeps the instance's own loader version.
+- A failed search on Modrinth or CurseForge has Try again, and a failed More results leaves the list on screen.
+- Mods a failed add left behind show up in the list straight away.
+- Long jobs show on their button while they run, and a button whose work fails says why.
+
+- Pixel icons: the launcher's icons are Kryoto's new pixel art and move a little when you point
+  at them. Settings > Interface > Icons switches back to the classic line icons.
+
 ## 0.1.4
 
 - CurseForge: browse and add mods, resource packs and shader packs from CurseForge beside

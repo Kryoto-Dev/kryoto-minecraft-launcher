@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Home, Plus, Search } from 'lucide-react'
+import { Home, Search } from '@/ui/pixel-icons'
 import { AsciiBar, Caption } from '@/ui'
 import { BlockIcon, blockFor } from '@/ui/BlockIcon'
 import { instanceLabel, type Instance } from '@/lib/api'
@@ -7,7 +7,7 @@ import { taskFor, taskFraction, useGames, useTasks } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 /** The instance list, as Kryoto Desktop's library sidebar. */
-export function Sidebar({ instances, selected, onSelect, onNew }: { instances: Instance[]; selected: string | null; onSelect: (id: string | null) => void; onNew: () => void }) {
+export function Sidebar({ instances, selected, onSelect }: { instances: Instance[]; selected: string | null; onSelect: (id: string | null) => void }) {
   const [query, setQuery] = useState('')
   const tasks = useTasks()
   const games = useGames()
@@ -84,10 +84,6 @@ export function Sidebar({ instances, selected, onSelect, onNew }: { instances: I
           })}
         </div>
       ) : null}
-
-      <button type="button" onClick={onNew} className="kryo-pill mt-auto flex h-9 items-center justify-center gap-2 border border-dashed border-border text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
-        <Plus className="size-3.5" /> New instance
-      </button>
     </aside>
   )
 }

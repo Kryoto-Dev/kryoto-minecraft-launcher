@@ -1,6 +1,6 @@
 import { createElement, isValidElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { Check } from 'lucide-react'
+import { Check } from '@/ui/pixel-icons'
 import { call, isTauri, on } from '@/lib/bridge'
 import type { Inbox } from '@/hooks/useInbox'
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, Check as CheckIcon, RotateCw, X } from 'lucide-react'
+import { AlertTriangle, Check as CheckIcon, RotateCw, X } from '@/ui/pixel-icons'
 import { AsciiBar, Button, Caption, Label } from '@/ui'
 import { Matrix } from '@/ui/Matrix'
 import { toastError } from '@/ui/Toasts'
@@ -28,7 +28,7 @@ export function DownloadsPage() {
           <section className="grid gap-3">
             <div className="flex items-center justify-between">
               <Label>Earlier</Label>
-              <Button size="sm" variant="ghost" onClick={() => void api.clearTasks()}>
+              <Button size="sm" variant="ghost" onClick={() => api.clearTasks()}>
                 Clear
               </Button>
             </div>
@@ -51,7 +51,7 @@ function Running({ task }: { task: Task }) {
       <div className="flex items-center gap-3">
         <Matrix state="download" className="size-4" />
         <span className="grow truncate text-sm font-bold">{task.title}</span>
-        <Button size="sm" onClick={() => void api.cancelTask(task.id)}>
+        <Button size="sm" onClick={() => api.cancelTask(task.id)}>
           <X className="size-3" /> Cancel
         </Button>
       </div>

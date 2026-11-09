@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronDown, Plus, UserRound } from 'lucide-react'
+import { Check, ChevronDown, Plus, UserRound } from '@/ui/pixel-icons'
 import { Button, Caption, MenuButton, Modal, inputCls, type MenuEntry } from '@/ui'
 import { toast, toastError } from '@/ui/Toasts'
 import { api, type Profile } from '@/lib/api'

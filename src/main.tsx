@@ -6,6 +6,7 @@ import { installErrorLogging } from './lib/log'
 import { installWindowDrag } from './lib/window-drag'
 import { installEdgeResize } from './lib/window'
 import './styles.css'
+import { PixelIconMotion } from '@/ui/pixel-icons-motion'
 
 document.documentElement.dataset.window = 'main'
 if (/Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent)) document.documentElement.dataset.os = 'linux'
@@ -19,6 +20,7 @@ document.addEventListener('contextmenu', (e) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <PixelIconMotion stored />
     <App />
     <GlobalTooltip />
   </StrictMode>,

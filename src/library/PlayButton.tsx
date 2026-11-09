@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, Play, Square, X } from 'lucide-react'
+import { Download, Play, Square, X } from '@/ui/pixel-icons'
 import { AsciiBar, Button, Caption } from '@/ui'
 import { toastError } from '@/ui/Toasts'
 import { api, type Instance } from '@/lib/api'
@@ -40,7 +40,7 @@ export function PlayButton({ instance, size = 'lg', onPlay }: { instance: Instan
             {task.speed > 0 ? ` · ${speed(task.speed)}` : ''}
           </Caption>
         </div>
-        <Button size="sm" onClick={() => void api.cancelTask(task.id)}>
+        <Button size="sm" onClick={() => api.cancelTask(task.id)}>
           <X className="size-3" /> Cancel
         </Button>
       </div>

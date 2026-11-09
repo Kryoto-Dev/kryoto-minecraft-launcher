@@ -1,4 +1,4 @@
-import { Download } from 'lucide-react'
+import { Download } from '@/ui/pixel-icons'
 import { AsciiBar } from '@/ui'
 import type { Instance } from '@/lib/api'
 import { taskFraction, useGames, useTasks } from '@/lib/store'

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Layers, Plus } from 'lucide-react'
+import { ArrowRight, Layers, Plus } from '@/ui/pixel-icons'
 import { Button, Caption, inputCls } from '@/ui'
 import { KryoMark } from '@/ui/ascii/KryoMark'
 import { BlockIcon } from '@/ui/BlockIcon'

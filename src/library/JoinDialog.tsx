@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Server } from 'lucide-react'
+import { Server } from '@/ui/pixel-icons'
 import { Button, Caption, Modal, inputCls } from '@/ui'
 import { toastError } from '@/ui/Toasts'
 import { api, type Instance } from '@/lib/api'

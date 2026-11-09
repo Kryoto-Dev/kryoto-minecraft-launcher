@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Trash2, Wrench } from 'lucide-react'
+import { Trash2, Wrench } from '@/ui/pixel-icons'
 import { Button, Caption, Check, Dropdown, Modal, Section, inputCls } from '@/ui'
 import { BLOCKS, BLOCK_NAMES, BlockIcon, blockFor } from '@/ui/BlockIcon'
 import { JavaPicker, MemorySlider, NumberField } from '@/ui/Controls'
@@ -7,13 +7,14 @@ import { toast, toastError } from '@/ui/Toasts'
 import { api, LOADERS, type Instance, type LoaderKind, type LoaderVersion, type Overrides } from '@/lib/api'
 import { useApp } from '@/lib/app-context'
 import { errorText } from '@/lib/bridge'
-import { live, useGames } from '@/lib/store'
+import { live, taskFor, useGames, useTasks } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 export function InstanceSettings({ instance, onDeleted }: { instance: Instance; onDeleted: () => void }) {
   const { info, settings } = useApp()
   const games = useGames()
   const running = !!games[instance.id]?.running
+  const working = !!taskFor(useTasks(), instance.id)
   const [name, setName] = useState(instance.name)
   const [confirmDelete, setConfirmDelete] = useState(false)
   useEffect(() => setName(instance.name), [instance.name])
@@ -33,7 +34,7 @@ export function InstanceSettings({ instance, onDeleted }: { instance: Instance; 
     <div className="h-full overflow-y-auto">
       <div className="grid max-w-3xl gap-8 px-6 py-5">
         <Section title="Name and icon">
-          <input value={name} maxLength={64} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== instance.name && void save({ name })} className={cn(inputCls, 'max-w-sm')} />
+          <input value={name} maxLength={64} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== instance.name && void save({ name })} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} className={cn(inputCls, 'max-w-sm')} />
           <div className="flex flex-wrap gap-1.5">
             {BLOCK_NAMES.map((b) => {
               const current = (instance.icon ?? blockFor(instance.id)) === b
@@ -53,7 +54,7 @@ export function InstanceSettings({ instance, onDeleted }: { instance: Instance; 
           </div>
         </Section>
 
-        <LoaderSection instance={instance} running={running} />
+        <LoaderSection instance={instance} running={running || working} />
 
         <Section title="Memory" hint="How much memory Minecraft may use.">
           <Check checked={o.memoryMb === null} onChange={(on) => void override({ memoryMb: on ? null : settings.memoryMb })} label={`Use the launcher's setting (${(settings.memoryMb / 1024).toFixed(1)} GB)`} />
@@ -91,10 +92,10 @@ export function InstanceSettings({ instance, onDeleted }: { instance: Instance; 
 
         <Section title="Files" hint="Repair checks every game file against Mojang's checksums and downloads what is damaged or missing. Worlds and mods are not touched.">
           <div className="flex flex-wrap gap-2">
-            <Button disabled={running} onClick={() => void api.install(instance.id, true).then(() => toast(`${instance.name} checked and repaired.`)).catch(toastError)}>
+            <Button disabled={running || working} onClick={() => api.install(instance.id, true).then(() => toast(`${instance.name} checked and repaired.`)).catch(toastError)}>
               <Wrench className="size-3.5" /> Repair
             </Button>
-            <Button variant="danger" disabled={running} onClick={() => setConfirmDelete(true)}>
+            <Button variant="danger" disabled={running || working} onClick={() => setConfirmDelete(true)}>
               <Trash2 className="size-3.5" /> Delete instance
             </Button>
           </div>
@@ -155,7 +156,9 @@ function LoaderSection({ instance, running }: { instance: Instance; running: boo
       .then((v) => {
         if (cancelled) return
         setVersions(v)
-        if (kind !== instance.loader.kind || !version) setVersion(v.find((x) => x.recommended)?.version ?? v[0]?.version ?? null)
+        // Back on the instance's own loader, its own version: the one picked for another loader means nothing here.
+        const own = kind === instance.loader.kind ? instance.loader.version : null
+        setVersion(own ?? v.find((x) => x.recommended)?.version ?? v[0]?.version ?? null)
       })
       .catch((e) => !cancelled && setError(errorText(e)))
     return () => {
@@ -205,7 +208,7 @@ function LoaderSection({ instance, running }: { instance: Instance; running: boo
         )
       ) : null}
       {changed && !unavailable ? (
-        <Button size="sm" variant="primary" className="justify-self-start" disabled={running || (kind !== 'vanilla' && !version)} onClick={() => void apply()}>
+        <Button size="sm" variant="primary" className="justify-self-start" disabled={running || (kind !== 'vanilla' && !version)} onClick={apply}>
           Use {LOADERS.find((l) => l.kind === kind)?.label}
           {kind !== 'vanilla' && version ? ` ${versions?.find((v) => v.version === version)?.label ?? version}` : ''}
         </Button>

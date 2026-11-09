@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Server } from 'lucide-react'
+import { FolderOpen, Server } from '@/ui/pixel-icons'
 import { Button, Caption, IconButton } from '@/ui'
 import { BlockIcon, blockFor } from '@/ui/BlockIcon'
 import { toastError } from '@/ui/Toasts'

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check as CheckIcon, Coffee, Info, Plus, RotateCw, Search, X } from 'lucide-react'
+import { Check as CheckIcon, Coffee, Info, Plus, RotateCw, Search, X } from '@/ui/pixel-icons'
 import { Busy, Button, Caption, IconButton, Label, Segmented } from '@/ui'
 import { api, KIND_LABEL, LOADERS, type LoaderKind, type VersionDetails, type VersionKind, type VersionList, type VersionRow } from '@/lib/api'
 import { errorText } from '@/lib/bridge'

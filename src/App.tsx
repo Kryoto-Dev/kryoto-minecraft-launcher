@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
-import { Plus } from 'lucide-react'
-import { Busy, Button } from '@/ui'
+import { Plus } from '@/ui/pixel-icons'
+import { ACTION_FAILED_EVENT, Busy, Button } from '@/ui'
 import { Toasts, toast, toastError } from '@/ui/Toasts'
 import { api, type AppInfo, type GameState, type Instance, type Settings, type VersionList } from '@/lib/api'
 import { App as AppCtx, useApp } from '@/lib/app-context'
@@ -167,6 +167,13 @@ function Shell() {
     }
   }, [settings.firstRunDone, saveSettings])
 
+  // A pressed button's work failed and nothing else caught it.
+  useEffect(() => {
+    const failed = (e: Event) => toastError((e as CustomEvent<unknown>).detail)
+    window.addEventListener(ACTION_FAILED_EVENT, failed)
+    return () => window.removeEventListener(ACTION_FAILED_EVENT, failed)
+  }, [])
+
   // Modpacks dropped anywhere on the window are imported. Other files go to
   // the open instance's content tab, which takes them itself.
   useEffect(() => {
@@ -224,7 +231,7 @@ function Shell() {
           <main className="relative flex min-h-0 grow">
             {tab === 'play' ? (
               <>
-                <Sidebar instances={instances} selected={current?.id ?? null} onSelect={setSelected} onNew={() => newInstance()} />
+                <Sidebar instances={instances} selected={current?.id ?? null} onSelect={setSelected} />
                 <div key={current?.id ?? 'home'} className="kryo-fade min-w-0 grow">
                   {current ? (
                     <InstancePage instance={current} showLog={showLog === current.id} onLogShown={() => setShowLog(null)} onJoin={() => setJoining(current)} onDeleted={() => setSelected(null)} />

@@ -1,4 +1,4 @@
-import { Layers, PackageOpen, Plus, Server } from 'lucide-react'
+import { Layers, PackageOpen, Plus, Server } from '@/ui/pixel-icons'
 import { Button, Caption, Label } from '@/ui'
 import { BlockIcon, blockFor } from '@/ui/BlockIcon'
 import { formatLastPlayed, formatPlaytime } from '@/lib/format'
@@ -115,9 +115,6 @@ export function Home({
               <Plus className="size-3.5" /> Snapshot {versions.latestSnapshot}
             </Button>
           ) : null}
-          <Button onClick={onBrowse}>
-            <Layers className="size-3.5" /> All versions
-          </Button>
           <Button onClick={onImport} title="A Modrinth (.mrpack) or CurseForge (.zip) modpack, with its mods and configs. You can also drop one on this window.">
             <PackageOpen className="size-3.5" /> Import a modpack
           </Button>

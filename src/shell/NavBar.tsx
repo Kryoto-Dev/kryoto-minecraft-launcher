@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Download, Gamepad2, Layers, Settings, type LucideIcon } from 'lucide-react'
+import { Download, Gamepad2, Layers, Settings, type LucideIcon } from '@/ui/pixel-icons'
 import { cn } from '@/lib/utils'
 
 export type Tab = 'play' | 'versions' | 'downloads' | 'settings'

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { RotateCw } from 'lucide-react'
+import { RotateCw } from '@/ui/pixel-icons'
 import { AsciiBar, Busy, Button, Caption, Modal } from '@/ui'
 import { DOWNLOAD_PAGE, explainUpdateError, updateFraction, updates, useUpdates } from '@/lib/updates'
 import { openExternal } from '@/lib/window'

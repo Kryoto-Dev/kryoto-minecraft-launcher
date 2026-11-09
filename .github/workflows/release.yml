@@ -241,7 +241,10 @@ jobs:
     needs: [check, create-release, build, manifest]
     runs-on: ubuntu-latest
     steps:
+      # Repository variable RELEASE_HOLD=1 keeps the finished release a draft, so it can go
+      # public in the same minute as kryo.to and the other apps.
       - name: Publish the release
+        if: vars.RELEASE_HOLD != '1'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

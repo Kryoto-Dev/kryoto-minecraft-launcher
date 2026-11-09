@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Copy, FileWarning, FolderOpen, Search } from 'lucide-react'
+import { AlertTriangle, Copy, FileWarning, FolderOpen, Search } from '@/ui/pixel-icons'
 import { Button, Check } from '@/ui'
 import { toast, toastError } from '@/ui/Toasts'
 import { api, type Instance } from '@/lib/api'

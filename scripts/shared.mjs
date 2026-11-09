@@ -98,7 +98,15 @@ function checkRemote() {
     const main = git(dir, 'rev-parse', 'HEAD')
     const behind = []
     for (const path of lock.paths) {
-      const theirs = show(dir, `HEAD:src/${path}`)
+      // A file synced from Desktop's uncommitted tree is not on main yet: a
+      // difference to report, not a reason for this warning-only step to fail.
+      let theirs
+      try {
+        theirs = show(dir, `HEAD:src/${path}`)
+      } catch {
+        behind.push(`${path} (not on main)`)
+        continue
+      }
       if (sha256(theirs) !== lock.hashes[path]) behind.push(path)
     }
     if (!behind.length) return console.log(`The launcher's shared files are current with Desktop main (${main.slice(0, 9)}).`)
