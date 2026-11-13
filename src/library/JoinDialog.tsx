@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Server } from '@/ui/pixel-icons'
 import { Button, Caption, Modal, inputCls } from '@/ui'
 import { toastError } from '@/ui/Toasts'
 import { api, type Instance } from '@/lib/api'
 import { withProfile } from '@/profiles/require'
+import { OwnedNameNote } from '@/profiles/Profiles'
+import { activeProfile, useProfiles } from '@/lib/store'
 
 /** Kryoto's own server, first in the list. */
 const KRYOTO_SERVER = { name: 'Kryo.to Anarchy', address: 'play.kryo.to' }
@@ -29,6 +31,18 @@ function remember(address: string) {
 /** Start the game straight into a server. */
 export function JoinDialog({ instance, onClose }: { instance: Instance; onClose: () => void }) {
   const [address, setAddress] = useState('')
+  // A profile named like a paid account is turned away by servers that check
+  // names (KB-0314): said here, before the game shows "Invalid session".
+  const profile = activeProfile(useProfiles())
+  const [owned, setOwned] = useState<string | null>(null)
+  useEffect(() => {
+    if (!profile) return
+    let alive = true
+    void api.nameOwnedByAccount(profile.name).then((taken) => alive && setOwned(taken ? profile.name : null)).catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [profile?.name])
   const recent = recentServers().filter((a) => a !== KRYOTO_SERVER.address)
   const join = async (to: string) => {
     const target = to.trim()
@@ -51,6 +65,7 @@ export function JoinDialog({ instance, onClose }: { instance: Instance; onClose:
       }
     >
       <div className="grid gap-4">
+        {owned && owned === profile?.name ? <OwnedNameNote name={owned} /> : null}
         <button type="button" onClick={() => void join(KRYOTO_SERVER.address)} className="kryo-radius flex items-center gap-3 border border-border bg-background p-3 text-left transition-colors hover:border-foreground">
           <span className="kryo-pill grid size-9 place-items-center bg-secondary">
             <Server className="size-4" />

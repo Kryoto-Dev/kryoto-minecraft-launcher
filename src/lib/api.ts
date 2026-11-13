@@ -173,6 +173,8 @@ export const api = {
 
   profiles: () => call<Profiles>('profiles_list'),
   addProfile: (name: string) => call<Profile>('profile_add', { name }),
+  /** Whether a paid Minecraft account owns this name; null when Mojang could not be asked. */
+  nameOwnedByAccount: (name: string) => call<boolean | null>('profile_name_owned', { name }),
   setActiveProfile: (id: string) => call<void>('profile_set_active', { id }),
   removeProfile: (id: string) => call<void>('profile_remove', { id }),
 

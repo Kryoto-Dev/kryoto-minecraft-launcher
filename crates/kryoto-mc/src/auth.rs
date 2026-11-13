@@ -4,6 +4,13 @@
 //! ownership is claimed or faked. Profiles play singleplayer and servers that
 //! run in offline mode (`online-mode=false`, as play.kryo.to does); servers
 //! that check accounts turn them away, and skins and Realms are unavailable.
+//!
+//! A name a paid account owns is the exception on offline servers too:
+//! play.kryo.to (FastLogin) and many others ask the game to prove that name,
+//! and the game, with no account to prove it with, is turned away with
+//! Minecraft's own "Invalid session (Try restarting your game and the
+//! launcher)". Restarting never helps, so the launcher says so before it
+//! happens (`name_owned_by_account`, KB-0314).
 
 use md5::{Digest, Md5};
 use serde::{Deserialize, Serialize};
@@ -47,6 +54,28 @@ pub fn valid_name(name: &str) -> Result<(), String> {
         return Err("A name can only use letters, numbers and _.".into());
     }
     Ok(())
+}
+
+/// Whether a paid Minecraft account has this name, from Mojang's public name
+/// lookup: `Some(true)` taken, `Some(false)` free, `None` when Mojang could
+/// not be asked (offline, rate limited). Names are compared without case,
+/// as Mojang and servers do.
+pub async fn name_owned_by_account(name: &str) -> Option<bool> {
+    let name = name.trim();
+    valid_name(name).ok()?;
+    let url = format!("https://api.mojang.com/users/profiles/minecraft/{name}");
+    let response = crate::net::client().get(&url).timeout(std::time::Duration::from_secs(8)).send().await.ok()?;
+    owned_from_status(response.status().as_u16())
+}
+
+/// Mojang answers 200 with the account for a taken name, and 404 (204 before
+/// 2023) for a free one. Anything else says nothing either way.
+fn owned_from_status(status: u16) -> Option<bool> {
+    match status {
+        200 => Some(true),
+        204 | 404 => Some(false),
+        _ => None,
+    }
 }
 
 /// The UUID an offline-mode server gives this name (Java's
@@ -108,6 +137,15 @@ pub fn active(paths: &Paths) -> Result<Profile, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mojang_answers_read_as_taken_free_or_unknown() {
+        assert_eq!(owned_from_status(200), Some(true));
+        assert_eq!(owned_from_status(404), Some(false));
+        assert_eq!(owned_from_status(204), Some(false));
+        assert_eq!(owned_from_status(429), None);
+        assert_eq!(owned_from_status(500), None);
+    }
 
     #[test]
     fn offline_uuids_match_the_server() {

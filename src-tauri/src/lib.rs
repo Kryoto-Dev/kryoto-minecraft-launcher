@@ -331,6 +331,12 @@ fn profile_add(app: State<App>, name: String) -> Res<auth::Profile> {
     auth::add(&app.core.paths, &name)
 }
 
+/// Whether a paid Minecraft account owns this name (`null`: Mojang could not be asked).
+#[tauri::command]
+async fn profile_name_owned(name: String) -> Option<bool> {
+    auth::name_owned_by_account(&name).await
+}
+
 #[tauri::command]
 fn profile_set_active(app: State<App>, id: String) -> Res<()> {
     auth::set_active(&app.core.paths, &id)
@@ -615,6 +621,7 @@ pub fn run() {
             tasks_clear,
             profiles_list,
             profile_add,
+            profile_name_owned,
             profile_set_active,
             profile_remove,
             content_list,

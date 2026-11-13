@@ -58,12 +58,41 @@ export function ProfileMenu({ onAdd }: { onAdd: () => void }) {
   )
 }
 
+/**
+ * What a name owned by a paid Minecraft account does on servers (KB-0314): the
+ * server asks the game to prove the name, and the game shows Minecraft's own
+ * "Invalid session" error, which tells people to restart and never helps.
+ */
+export function OwnedNameNote({ name }: { name: string }) {
+  return (
+    <p role="alert" className="kryo-radius border border-destructive/50 p-3 text-xs leading-relaxed text-foreground">
+      <b>{name}</b> is the name of a paid Minecraft account. play.kryo.to and many other servers check names like that, and the game is turned away with
+      “Invalid session (Try restarting your game and the launcher)”. Restarting doesn't help: play on servers under a name no paid account uses. Singleplayer works with
+      any name.
+    </p>
+  )
+}
+
 /** A new profile: the name to play under. `first`: asked when a game starts and there is none yet. */
 export function ProfileDialog({ onClose, onAdded, first = false }: { onClose: () => void; onAdded?: () => void; first?: boolean }) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+  // The name last found to belong to a paid account; adding it again is the player's choice.
+  const [owned, setOwned] = useState<string | null>(null)
   const valid = /^[A-Za-z0-9_]{3,16}$/.test(name)
+  const warned = owned !== null && owned.toLowerCase() === name.toLowerCase()
   const add = async () => {
+    if (!warned) {
+      setChecking(true)
+      // No answer from Mojang never blocks a name: the check only warns.
+      const taken = await api.nameOwnedByAccount(name).catch(() => null)
+      setChecking(false)
+      if (taken) {
+        setOwned(name)
+        return
+      }
+    }
     try {
       const profile = await api.addProfile(name)
       await live.refreshProfiles()
@@ -81,8 +110,8 @@ export function ProfileDialog({ onClose, onAdded, first = false }: { onClose: ()
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" disabled={!valid} onClick={() => void add()}>
-            {first ? 'Save and play' : 'Add profile'}
+          <Button variant="primary" disabled={!valid || checking} onClick={() => void add()}>
+            {warned ? 'Use it anyway' : first ? 'Save and play' : 'Add profile'}
           </Button>
         </>
       }
@@ -99,19 +128,21 @@ export function ProfileDialog({ onClose, onAdded, first = false }: { onClose: ()
               setName(e.target.value.replace(/\s/g, ''))
               setError(null)
             }}
-            onKeyDown={(e) => e.key === 'Enter' && valid && void add()}
+            onKeyDown={(e) => e.key === 'Enter' && valid && !checking && void add()}
             placeholder="Steve"
             className={inputCls}
           />
         </label>
         <p className="text-[11px] text-muted-foreground">3 to 16 letters, numbers or _.</p>
+        {warned ? <OwnedNameNote name={name} /> : null}
         {error ? (
           <p role="alert" className="text-xs text-destructive">
             {error}
           </p>
         ) : null}
         <p className="text-xs leading-relaxed text-muted-foreground">
-          A profile plays singleplayer and servers that run in offline mode, like play.kryo.to. Servers that check Microsoft accounts, Realms and skins aren't available.
+          A profile plays singleplayer and servers that run in offline mode, like play.kryo.to, under a name no paid Minecraft account uses. Servers that check Microsoft
+          accounts, Realms and skins aren't available.
           If you enjoy the game, buy it at minecraft.net.
         </p>
       </div>

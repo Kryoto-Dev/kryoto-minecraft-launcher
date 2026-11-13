@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6
+
+- When you make a profile or open Join a server, the launcher tells you if your name belongs to a paid Minecraft account: servers that check names, like play.kryo.to, turn it away with "Invalid session". Pick another name, or on play.kryo.to join a second time. Reported by [the artist benry](https://kryo.to/user/benry) and [Satya](https://kryo.to/user/justayguyy).
+
 ## 0.1.5
 
 - The list of instances has no second New instance button, and Home no second way to Versions: both are on the bar above.
